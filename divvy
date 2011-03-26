@@ -77,17 +77,17 @@ sub validate_args() {
 sub main {
   # Roll through each line of STDIN, and if it matches a pattern,
   # execute any corresponding handlers
-	# Allocate a bunch of hashes to hold arguments
+  # Allocate a bunch of hashes to hold arguments
  
-	# Initialize, the handler array!
-	foreach(@handler_types) {
+  # Initialize, the handler array!
+  foreach(@handler_types) {
     $handlers{$_} = {};
   }
  
-	# Second, validate the args!
-	validate_args;
+  # Second, validate the args!
+  validate_args;
 
-	# Now do the handywork
+  # Now do the handywork
   while(my $line = <STDIN>) {
     chomp($line);
     foreach my $idx (keys %patterns) {
@@ -156,14 +156,14 @@ my %log_files = ();
 sub handle_log {
   my ($index, $line) = @_;
   # Is there a file stream already open?
-	#  If not, open it
-	if(!defined($log_files{$index})) {
-		$log_files{$index} = "file_handle_$index"; 
-		my $filename = get_arg("log", $index);
-		open($log_files{$index}, '>', $filename);
-	}
+  #  If not, open it
+  if(!defined($log_files{$index})) {
+    $log_files{$index} = "file_handle_$index"; 
+    my $filename = get_arg("log", $index);
+    open($log_files{$index}, '>', $filename);
+  }
   # Write to the log file
-	print {$log_files{$index}} $line."\n";
+  print {$log_files{$index}} $line."\n";
 }
 
 # A handler for letting the user log matching lines to the
