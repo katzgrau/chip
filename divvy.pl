@@ -49,7 +49,7 @@ sub validate_args() {
   # Go through each argument
   foreach (@ARGV) {
     # Does it look like a valid argument?
-    if(my ($handler, $index, $argument) = /\-\-([a-zA-Z]+)(\d+)=(.*)/) {
+    if(my ($handler, $index, $argument) = /\-\-([a-zA-Z]+)(\d+)=(?:["']?)([^'"]*)(?:["']?)/) {
       if($handler eq "match") {
         # It's a 'match' argument specifying a pattern
         $patterns{$index} = $argument; 
@@ -78,14 +78,14 @@ sub main {
   # Roll through each line of STDIN, and if it matches a pattern,
   # execute any corresponding handlers
 	# Allocate a bunch of hashes to hold arguments
-  
-	# First, validate the args!
-	validate_args;
-
-  # Second, format the handler array!
+ 
+	# Initialize, the handler array!
 	foreach(@handler_types) {
     $handlers{$_} = {};
   }
+ 
+	# Second, validate the args!
+	validate_args;
 
 	# Now do the handywork
   while(my $line = <STDIN>) {
@@ -108,7 +108,7 @@ sub execute_all_handlers {
     my $func = "handle_$handler";
     if(defined(\$func)) {
       # Use eval until we don't need use strict;
-       &$func($matching_index, $line); 
+      &$func($matching_index, $line); 
     } else { print "NOT DEFINED!\n"; }
   }
 }
@@ -150,10 +150,20 @@ sub handle_exec {
 
 # A handler for allowing the user to log a matching line to a
 # file. The argument passed on the command line should be
-# the filepath to log to
+# the filepath to log to.
+# Define log_files here to keep this handler all in one place
+my %log_files = (); 
 sub handle_log {
-  # Is there a file stream already open?
   my ($index, $line) = @_;
+  # Is there a file stream already open?
+	#  If not, open it
+	if(!defined($log_files{$index})) {
+		$log_files{$index} = "file_handle_$index"; 
+		my $filename = get_arg("log", $index);
+		open($log_files{$index}, '>', $filename);
+	}
+  # Write to the log file
+	print {$log_files{$index}} $line."\n";
 }
 
 # A handler for letting the user log matching lines to the
@@ -168,6 +178,7 @@ sub handle_screen {
 # Kickoff the main program loop
 main;
 
+#print Dumper(@ARGV);
 #print Dumper(\%patterns) . "\n" ;
 #print Dumper(\%handlers) . "\n" ;
 #print Dumper(\%index_to_handler) . "\n" ;
