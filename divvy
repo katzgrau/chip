@@ -20,16 +20,21 @@ use Data::Dumper;
 # Will hold keys to arrays of index ids to handers
 my @handler_types = qw/log exec screen/;
 
+# Will hold options/switched
+my @options = qw/one-mail tail/;
+
 # Will hold the patterns that we're looking for
 my %patterns = ();
+
+# Will hold a filename to parse as a log file. If this isn't
+#  specified, we'll use STDIN
+my $logfile = '';
 
 # Will hold the functions for dealing with lines matching patterns
 my %handlers = ();
 
+# Holds indexes to the handlers associate with them
 my %index_to_handler = ();
-
-# Will hold whether to print the lines to STDOUT
-my $opt_out = 0;
 
 # Will hold whether to keep the log file open and follow it like tail -f
 my $opt_tail = 0;
@@ -49,7 +54,7 @@ sub validate_args() {
   # Go through each argument
   foreach (@ARGV) {
     # Does it look like a valid argument?
-    if(my ($handler, $index, $argument) = /\-\-([a-zA-Z]+)(\d+)=(?:["']?)([^'"]*)(?:["']?)/) {
+    if(my ($handler, $index, $argument) = /\-\-([a-zA-Z\-]+)(\d+)=(?:["']?)([^'"]*)(?:["']?)/) {
       if($handler eq "match") {
         # It's a 'match' argument specifying a pattern
         $patterns{$index} = $argument; 
@@ -107,9 +112,8 @@ sub execute_all_handlers {
   foreach my $handler (@{$index_to_handler{$matching_index}}) {
     my $func = "handle_$handler";
     if(defined(\$func)) {
-      # Use eval until we don't need use strict;
       &$func($matching_index, $line); 
-    } else { print "NOT DEFINED!\n"; }
+    }
   }
 }
 
