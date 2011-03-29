@@ -11,6 +11,20 @@
 # Project maintained at:
 #   http://github.com/katzgrau/divvy
 
+# This script was written to be easily modifiable in case
+#  others would want to add their own functionality
+#
+# It files the steps below:
+#  1. Initialize any utility variables/globals
+#  2. Validate all arguments
+#  3. Execute the "open" hook
+#  4. Roll through each line of input (a file or STDIN)
+#  5. If a line matches a pattern specified as an argument,
+#       execute all handlers for that pattern
+#  6. Execute the "close" hook
+#
+# For more about writing your own handlers and using hooks,
+#  take a gander at the README 
 use strict;
 no strict 'refs';
 
@@ -202,6 +216,18 @@ sub fatal {
   exit;
 }
 
+# Send an email!
+#  Todo: Do this in some very-portable way
+#  Takes to, subject, body
+my $mailbin = `which mail`;	
+sub send_email {
+  my ($to, $subject, $body) = @_;
+	chomp($mailbin);
+	open(pipe_out, '|-', $mailbin, '-s', $subject,  $to);
+  print pipe_out "$body\n";
+  close(pipe_out);
+}
+
 # Print a help message. This will print instructions and exit.
 sub print_usage {
   print qq/
@@ -238,20 +264,48 @@ sub handle_pexec {
   my ($index, $line) = @_;
   my $cmd = get_arg('pexec', $index);
   $cmd =~ s/\{\{LINE\}\}/$line/g;
-  open pipe_out, '|', $cmd;
+  open pipe_out, '|', "'$cmd'";
   print pipe_out $line . "\n";
   close(pipe_out);
 }
 
 # Any matches should be emailed to the address specified by the argument
-my $buffer = ();
+my %buffers = ();
 sub handle_mail {
-  my ($index, $line) = @_;
-  my $cmd = get_arg('pexec', $index);
-  $cmd =~ s/\{\{LINE\}\}/$line/g;
-  open(pipe_out, '| mail ', '-s', "divvy matched '. $patterns{$index} .'", '-t', get_arg('mail', $index));
-  print pipe_out $line."\n";
-  close(pipe_out);
+	# Get our variabled ready
+	my ($index, $line) = @_;
+	my $email = get_arg('mail', $index);
+	my $pattern = $patterns{$index};
+
+  if(get_opt('follow')) {
+	  # Are we following the file with tail? Send an email
+		#  as matches come up ..
+		send_email($email, "divvy matched $pattern", $line);
+  } else {
+		# Are we flying through the file all at once like grep?
+		#  Save all the matches for one big email
+	  if(!defined($buffers{$email})) {
+			# Initialize the slot for this email address
+		  $buffers{$email} = {};  
+		}
+    if(!defined($buffers{$email}{$pattern})) {
+			# Initialize a place for emails for this pattern
+			$buffers{$email}{$pattern} = '';
+		}
+		# Add the matched line to the buffer
+    $buffers{$email}{$pattern} .= "$line\n";
+	}
+}
+
+# A closing hook for the mail handler
+sub handle_mail_close() {
+	# return;
+  # Send each specified recipient the buffer that was
+  while(my ($email, $patterns) = each %buffers) {
+	  while(my ($pattern, $buffer) = each %patterns) {
+		  send_email($email, "divvy matched $pattern", $buffer);
+		}
+	}
 }
 
 # A handler for allowing the user to log a matching line to a
@@ -289,3 +343,4 @@ main;
 #print Dumper(\%handlers) . "\n" ;
 #print Dumper(\%index_to_handler) . "\n" ;
 #print Dumper(\%options) . "\n" ;
+print Dumper(\%buffers) . "\n" ;
