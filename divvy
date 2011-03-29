@@ -36,7 +36,7 @@ my %handlers = ();
 # Will hold the options that have been specified
 my %options = ();
 
-# Holds indexes to the handlers associate with them
+# Holds indexes to the handlers associated with them
 my %index_to_handler = ();
 
 # ------------------------------------------------------------
@@ -53,7 +53,7 @@ sub validate_args() {
     # Does it look like a valid argument?
     if(my ($handler, $index, $argument) = /\-\-([a-zA-Z\-]+)(\d+)?=?(?:["']?)([^'"]*)(?:["']?)/) {
       if($handler eq "match") {
-        # It's a 'match' argument specifying a pattern
+				# It's a 'match' argument specifying a pattern
         $patterns{$index} = $argument; 
       } elsif (defined $handlers{$handler}) {
         # It's a handler specifying what to do with a match
@@ -70,7 +70,6 @@ sub validate_args() {
       } else {
         # If it's not a match, handler, or option, it must be a log file to open
 				$logfile = $handler; 
-				# fatal("Handler '$handler' is not recognized.");
       }
     } else {
 		  $logfile = $_; 
@@ -107,16 +106,25 @@ sub main {
 	execute_all_hooks('open');
 
   # Now do the handywork
+	#  We keep track of *where* exactly we are in the input stream
+	#  in case the --follow flag is specified. This is so we can
+	#  continually take in new input
   while(my $line = <$input>) {
+		# Get the position
+		my $pos = tell($input);
     chomp($line);
     foreach my $idx (keys %patterns) {
       $_ = $line;
       if(/$patterns{$idx}/) {
         execute_all_handlers($idx, $line);
       }
-    }  
-  }
-
+    }
+		# Are we tailing a file? Then we need to clear the EOF
+		#  and seek until the end
+	  if (get_opt('follow')) {
+			seek($input, $pos, 1);
+	  }
+	}
 	# Execute any post-processing hooks
 	execute_all_hooks('close');
 }
@@ -126,14 +134,17 @@ sub main {
 sub get_input {
 	my $input_handle = 0;
   if($logfile) {
+		# A logfile was specified as input
     $input_handle = 'input_handle';
-		if(!get_opt('follow')) {
-		  # A log file was specified, read from that
+		if(get_opt('follow')) {
+		  # Pipe from tail! First, WTH is tail? /usr/bin? Don't be naive..
+			my $tail = `which tail`;
+			chomp($tail);
+			open $input_handle, '-|', $tail, '-f', $logfile, '-n', '0';
+	  } else {
+			# Uh oh, the log file doesn't exist :'(
 		  fatal("Input file specified does not exist: $logfile") if (! -e $logfile);
 		  open $input_handle, '<', $logfile;
-	  } else {
-			# Pipe from tail!
-			open $input_handle, '-|', "tail -f '$logfile'";
 	  }
 	} else {
 		# Read from STDIN instead
@@ -158,7 +169,7 @@ sub execute_all_handlers {
 
 # Execute a hook function for any handlers that have been
 #  specified if they exist
-sub execute_all_hooks{
+sub execute_all_hooks {
 	my ($type) = @_;
   foreach my $handler (@handler_types) {
     my $func = 'handle_'.$handler.'_'.$type;
@@ -191,11 +202,13 @@ sub fatal {
   exit;
 }
 
+# Print a help message. This will print instructions and exit.
 sub print_usage {
   print qq/
   Usage: divvy [options] [--matchN] [--handlerN] [filename]
 
   Example: divvy --follow --match0=ERROR --mail0='katzgrau\@gmail.com' logfile.txt
+
 /;
   exit;
 }
@@ -225,17 +238,18 @@ sub handle_pexec {
   my ($index, $line) = @_;
   my $cmd = get_arg('pexec', $index);
   $cmd =~ s/\{\{LINE\}\}/$line/g;
-  open(pipe_out, "| $cmd");
+  open pipe_out, '|', $cmd;
 	print pipe_out $line . "\n";
 	close(pipe_out);
 }
 
 # Any matches should be emailed to the address specified by the argument
+my $buffer = ();
 sub handle_mail {
   my ($index, $line) = @_;
   my $cmd = get_arg('pexec', $index);
   $cmd =~ s/\{\{LINE\}\}/$line/g;
-  open(pipe_out, '| mail -s "divvy matched '. $patterns{$index} .'" -t ' . get_arg('mail', $index));
+  open(pipe_out, '| mail ', '-s', "divvy matched '. $patterns{$index} .'", '-t', get_arg('mail', $index));
 	print pipe_out $line."\n";
 	close(pipe_out);
 }
