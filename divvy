@@ -37,10 +37,13 @@ use Term::ANSIColor;
 my @handler_types = qw/log exec pexec screen mail/;
 
 # Will hold options/switched
-my @option_types = qw/follow/;
+my @option_types = qw/follow complete/;
 
 # Will hold options available for specific matches
 my @match_option_types = qw/color/;
+
+# Will hold the version of divvy. No, I don't feel a constant is needed.
+my $version = '0.1a';
 
 # Will hold the patterns that we're looking for
 my %patterns = ();
@@ -78,7 +81,7 @@ sub validate_args() {
     # Does it look like a valid argument?
     if(my ($handler, $index, $argument) = 
       /\-\-([a-zA-Z\-]+)(\d+)?=?(?:["']?)([^'"]*)(?:["']?)/) {
-      # Check so see what type of argument this is
+      # Check to see what type of argument this is
       if($handler eq "match") {
         # It's a 'match' argument specifying a pattern
         $patterns{$index} = $argument; 
@@ -92,15 +95,16 @@ sub validate_args() {
       } elsif (defined $options{$handler}){
         # It's an option. We'll mark that it was specified
         $options{$handler} = ($argument ? $argument : 1);
-			} elsif (defined($index) && grep(/^$handler$/, @match_option_types)) {
-				# It's an option for a specific match
-				print "ADDING $handler $index..\n";
-				if(!defined($match_options{$index})) {
-				  $match_options{$index} = {}; 
-				}
-				$match_options{$index}{$handler} = $argument;
+      } elsif (defined($index) && grep(/^$handler$/, @match_option_types)) {
+        # It's an option for a specific match
+        if(!defined($match_options{$index})) {
+          $match_options{$index} = {}; 
+        }
+        $match_options{$index}{$handler} = $argument;
       } elsif ($handler eq 'help') {
         print_usage();
+      } elsif ($handler eq 'install') {
+        install();
       } else {
         # If it's not a match, handler, or option, it must be a log file to 
         #  open
@@ -160,6 +164,15 @@ sub main {
   }
   # Execute any post-processing hooks
   execute_all_hooks('close');
+
+  # Send a end notification email if it was requested
+  if(my $email = get_opt('complete')) {
+    my $localtime = localtime;
+    my $hostname  = `hostname`;
+    my $cmd = join(' ', @ARGV);
+    my $body = "divvy's done.\n\nCommand: $0 $cmd\nStarted: $start_time\nComplete: $localtime\nHost: $hostname";
+    send_email($email, "divvy completed @ $localtime", $body);
+  }
 }
 
 # Get the input stream. it might be a file specified as an argument. If no 
@@ -218,7 +231,11 @@ sub execute_all_hooks {
 #  --[type][index]=[arg]
 sub get_arg {
   my ($type, $index) = @_;
-  return $handlers{$type}{$index};
+  if($handlers{$type}{$index}) {
+    return $handlers{$type}{$index};
+  } else {
+    return 0;
+  }
 }
 
 # Given the name of an option, check whether it was specified or not
@@ -230,11 +247,11 @@ sub get_opt {
 # Get an options for a match by name and index
 sub get_match_opt {
   my ($index, $name) = @_;
-	if(defined($match_options{$index}{$name})) {
-	  return $match_options{$index}{$name};
-	} else {
-	  return 0;
-	}
+  if(defined($match_options{$index}{$name})) {
+    return $match_options{$index}{$name};
+  } else {
+    return 0;
+  }
 }
 
 # Print out a message and exit the script. Basically used for errors
@@ -258,12 +275,21 @@ sub send_email {
 
 # Print a help message. This will print instructions and exit.
 sub print_usage {
-  print qq/
+  print qq/  divvy version $version
+    Written by Kenny Katzgrau <katzgrau\@gmail.com>
+
   Usage: divvy [options] [--matchN] [--handlerN] [filename]
 
   Example: divvy --follow --match0=ERROR --mail0='katzgrau\@gmail.com' log.txt
 
 /;
+  exit;
+}
+
+# Install divvy! install it to /usr/local/bin
+sub install {
+  print "Installing divvy to /usr/local/bin ..\n"; 
+  fatal("The divvy filename can't be figured out..") if !$0;
   exit;
 }
 # ------------------------------------------------------------------------------
@@ -349,8 +375,8 @@ sub handle_log {
   }
   # Write to the log file
   if(get_opt('follow')) {
-		# If we are following the file, we want to flush the buffer after every
-		#  line (maybe someone is tailing our logs!). Set the filehandle as 'hot'
+    # If we are following the file, we want to flush the buffer after every
+    #  line (maybe someone is tailing our logs!). Set the filehandle as 'hot'
     select((select({$log_files{$index}}), $|=1)[0]);
   }
   print {$log_files{$index}} $line."\n";
@@ -363,13 +389,15 @@ sub handle_log {
 my $did_print = 0; # Used so we don't print the same line twice
 sub handle_screen {
   my ($index, $line) = @_;
-	if(my $color = get_match_opt($index, 'color')) {
-		print(colored [$color], $line."\n") if(!$did_print);
-		print color 'reset';
-	} else {
-	  print($line."\n") if !$did_print;
+  my $color = (get_match_opt($index, 'color')
+    or get_arg('screen', $index));
+  if($color) {  
+    print(colored [$color], "$line\n") if(!$did_print);
+    print color 'reset';
+  } else {
+    print("$line\n") if !$did_print;
   }
-	$did_print = 1;
+  $did_print = 1;
 }
 
 # Set the printed flag back to 0 when we're done matching patterns against 
