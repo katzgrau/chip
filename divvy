@@ -148,7 +148,7 @@ sub main {
     chomp($line);
     # Execute any pre-match hooks
     execute_all_hooks('pre_search');
-    foreach my $idx (keys %patterns) {
+    foreach my $idx (sort keys %patterns) {
       # Attempt to match the line
       $_ = $line;
       if(/$patterns{$idx}/) {
