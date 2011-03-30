@@ -1,6 +1,6 @@
 # divvy
 
-Divvy is a log parsing and monitoring tool for system admins and developers. 
+`divvy` is a log parsing and monitoring tool for system admins and developers. 
 It wraps the functionality of `tee`, `tail`, `grep`, and `mail` all into one.
 
 ## One line install
@@ -11,9 +11,28 @@ Want to jump right into it? This will work on most *nix systems. You _may_ have 
 
 Now read all about what you just installed :)
 
-## Its like grep
+## The basics
 
-You have a big ol log file from some web application that uses the conventions
+`divvy` starts up and tries to log a file (like a log file) or read from standard input.
+It goes through each line looking for patterns that you specified as arguments. When
+it finds a match, it does whatever you told divvy to do with that match.
+
+Maybe you'd want to:
+
+1. Show the match(es) on the screen (like grep)
+2. Colorize matches (like a colorizer)
+3. Follow the file (like tail)
+4. Log it to a file (like output redirection)
+5. Have the line emailed to you (maybe for errors in a log)
+6. Kick off another program
+7. Any combination of the above, with any number of matches, all at once
+
+## Examples
+
+
+### Split matches into different files
+
+You have a big ol' log file from some web application that uses the conventions
 of starting lines with ERROR, WARN, INFO, DEBUG, etc. You want to place all of
 the errors in one file, and all of the WARNS in another.
 
@@ -21,21 +40,21 @@ the errors in one file, and all of the WARNS in another.
 
 Cool. But yeah, you could do that with a couple grep commands.
 
-## Its like tee, grep, and output redirection
+### View some matches in your terminal, stick others in a file
 
-You are about to run a script that does something nasty, like importing 1,000s
+You're about to run a script that does something nasty, like importing 1,000s
 of email addresses into an email service that rhymes with 'mailpimp'. A whole
 bunch of status lines get output, along with occaisional errors.
 
 You want to run the script, see only the errors on the screen, and at the same time, 
-send all output to one file, and all errors to another.
+send all output to one file and all errors to another.
 
 `$ ./email-import | divvy --match0='.*' --log0=output.txt --match1='ERROR' --log1=errors.txt --screen1`
 
 That should be at least fairly intriguing, especially since you can attach as many match conditions
-and corresponding handlers as youd like!
+and corresponding handlers as you'd like!
 
-## Its like tail and mail
+### Highlight matches in a terminal, and have errors emailed to you, and logged
 
 Time for best part!
 
@@ -79,7 +98,7 @@ To view the usage:
 
 ## Maintainer
 
-This project was written and is maintained by Kenny Katzgrau <katzgrau@gmail.com>.
+This project was written and is maintained by Kenny Katzgrau <katzgrau@gmail.com> at [CodeFury.net](http://codefury.net)
 
 ## About
 
