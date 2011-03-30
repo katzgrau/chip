@@ -30,6 +30,7 @@ use strict;
 no strict 'refs';
 
 use Data::Dumper;
+use Term::ANSIColor;
 
 # If you make a new handler in the handler section, add it here
 # Will hold keys to arrays of index ids to handers
@@ -37,6 +38,9 @@ my @handler_types = qw/log exec pexec screen mail/;
 
 # Will hold options/switched
 my @option_types = qw/follow/;
+
+# Will hold options available for specific matches
+my @match_option_types = qw/color/;
 
 # Will hold the patterns that we're looking for
 my %patterns = ();
@@ -50,6 +54,9 @@ my %handlers = ();
 
 # Will hold the options that have been specified
 my %options = ();
+
+# Will hold options for specific matched
+my %match_options = ();
 
 # Holds indexes to the handlers associated with them
 my %index_to_handler = ();
@@ -84,7 +91,14 @@ sub validate_args() {
         push(@{$index_to_handler{$index}}, $handler);
       } elsif (defined $options{$handler}){
         # It's an option. We'll mark that it was specified
-        $options{$handler} = 1;
+        $options{$handler} = ($argument ? $argument : 1);
+			} elsif (defined($index) && grep(/^$handler$/, @match_option_types)) {
+				# It's an option for a specific match
+				print "ADDING $handler $index..\n";
+				if(!defined($match_options{$index})) {
+				  $match_options{$index} = {}; 
+				}
+				$match_options{$index}{$handler} = $argument;
       } elsif ($handler eq 'help') {
         print_usage();
       } else {
@@ -111,7 +125,7 @@ sub main {
   foreach(@option_types) {
     $options{$_} = 0;
   }
-
+ 
   # Second, validate the args!
   validate_args();
 
@@ -160,7 +174,7 @@ sub get_input {
       my $tail = `which tail`;
       chomp($tail);
       # Start the tail 0 lines of initial output
-      open $input_handle, '-|', $tail, '-f', $logfile, '-n', '0';
+      open $input_handle, '-|', $tail, '-f', '-n', '0', $logfile;
     } else {
       # Uh oh, the log file doesn't exist :'(
       fatal("Input file specified does not exist: $logfile") if (! -e $logfile);
@@ -213,6 +227,16 @@ sub get_opt {
   return $options{$name};
 }
 
+# Get an options for a match by name and index
+sub get_match_opt {
+  my ($index, $name) = @_;
+	if(defined($match_options{$index}{$name})) {
+	  return $match_options{$index}{$name};
+	} else {
+	  return 0;
+	}
+}
+
 # Print out a message and exit the script. Basically used for errors
 sub fatal {
   my ($message) = @_;
@@ -257,7 +281,7 @@ sub handle_exec {
   my ($index, $line) = @_;
   my $cmd = get_arg('exec', $index);
   $cmd =~ s/\{\{LINE\}\}/$line/g;
-  print `$cmd`;  
+  `$cmd`;  
 }
 
 # Allow a user to specify an arbitrary command to execute for a line, but the 
@@ -266,7 +290,7 @@ sub handle_pexec {
   my ($index, $line) = @_;
   my $cmd = get_arg('pexec', $index);
   $cmd =~ s/\{\{LINE\}\}/$line/g;
-  open pipe_out, '|', "'$cmd'";
+  open pipe_out, '|', $cmd;
   print pipe_out $line . "\n";
   close(pipe_out);
 }
@@ -324,9 +348,11 @@ sub handle_log {
     open($log_files{$index}, '>', $filename);
   }
   # Write to the log file
-	if(get_opt('follow')) {
-	  select((select({$log_files{$index}}), $|=1)[0]);
-	}
+  if(get_opt('follow')) {
+		# If we are following the file, we want to flush the buffer after every
+		#  line (maybe someone is tailing our logs!). Set the filehandle as 'hot'
+    select((select({$log_files{$index}}), $|=1)[0]);
+  }
   print {$log_files{$index}} $line."\n";
 }
 
@@ -337,8 +363,13 @@ sub handle_log {
 my $did_print = 0; # Used so we don't print the same line twice
 sub handle_screen {
   my ($index, $line) = @_;
-  print $line."\n" if !$did_print;
-  $did_print = 1;
+	if(my $color = get_match_opt($index, 'color')) {
+		print(colored [$color], $line."\n") if(!$did_print);
+		print color 'reset';
+	} else {
+	  print($line."\n") if !$did_print;
+  }
+	$did_print = 1;
 }
 
 # Set the printed flag back to 0 when we're done matching patterns against 
@@ -357,3 +388,4 @@ main;
 #print Dumper(\%index_to_handler) . "\n" ;
 #print Dumper(\%options) . "\n" ;
 #print Dumper(\%buffers) . "\n" ;
+#print Dumper(\%match_options) . "\n" ;
