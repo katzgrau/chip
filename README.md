@@ -13,9 +13,9 @@ Now read all about what you just installed :)
 
 ## The basics
 
-`divvy` starts up and tries to log a file (like a log file) or read from standard input.
-It goes through each line looking for patterns that you specified as arguments. When
-it finds a match, it does whatever you told divvy to do with that match.
+`divvy` starts up and tries to open a log file. If one isn't specified, it reads from standard input.
+It goes through each line looking for patterns that _you_ have specified as arguments. When
+it finds a match, divvy does whatever you told it to do with that match.
 
 Maybe you'd want to:
 
@@ -23,51 +23,43 @@ Maybe you'd want to:
 2. Colorize matches (like a colorizer)
 3. Follow the file (like tail)
 4. Log it to a file (like output redirection)
-5. Have the line emailed to you (maybe for errors in a log)
+5. Have the line emailed to you (maybe for _really_ important stuff)
 6. Kick off another program
 7. Any combination of the above, with any number of matches, all at once
 
 ## Examples
 
-
 ### Split matches into different files
 
-You have a big ol' log file from some web application that uses the conventions
-of starting lines with ERROR, WARN, INFO, DEBUG, etc. You want to place all of
-the errors in one file, and all of the WARNS in another.
+You have a long-running process that prints out its progress. Some items
+might be errors (maybe prefixed with 'ERROR'), others are warnings.
 
-`$ divvy --match0=ERROR --log=error.txt --match1=WARN --log=warns.txt biglog.txt`
-
-Cool. But yeah, you could do that with a couple grep commands.
+`$ ./lame-process | divvy --match0=ERROR --log0=errors.txt --match1=WARN --log1=warnings.txt`
 
 ### View some matches in your terminal, stick others in a file
 
 You're about to run a script that does something nasty, like importing 1,000s
 of email addresses into an email service that rhymes with 'mailpimp'. A whole
-bunch of status lines get output, along with occaisional errors.
+bunch of status lines get output, along with occasional errors.
 
 You want to run the script, see only the errors on the screen, and at the same time, 
 send all output to one file and all errors to another.
 
 `$ ./email-import | divvy --match0='.*' --log0=output.txt --match1='ERROR' --log1=errors.txt --screen1`
 
-That should be at least fairly intriguing, especially since you can attach as many match conditions
-and corresponding handlers as you'd like!
-
 ### Highlight matches in a terminal, and have errors emailed to you, and logged
 
-Time for best part!
+Want to get notified whenever a fatal (like an HTTP 500) error occurs and is logged to some file? 
+Want to log them separately too? Want to view all output as it goes by (like `tail`), but highlight 
+fatal errors in red? No prob.
 
-Want to get notified whenever a fatal error occurs? Want to log them too? Want
-to view all output as it goes by, but highlight fatal errors in red? No prob.
-
-`$ divvy --follow --match0='FATAL' --screen0='red' --mail0=katzgrau@gmail.com --log0=fatal.txt --match1='.*' --screen1 error_log.txt` 
+`$ divvy --follow --match0='HTTP 500' --screen0='red' --mail0=katzgrau@gmail.com --log0=fatal.txt --match1='.*' --screen1 error_log.txt` 
 
 ## More Fun Stuff
 
-How about kicking off some process every time something shows up in the log?
+How about kicking off some process every time something specific shows up in the log?
 
-`$ divvy --follow --match0='New Package Submission' --exec0='./some-script' app_log.txt`
+`$ divvy --follow --match0='out of space' --exec0='find /home -name "pron*.*" | rm ' app_log.txt`
 
 How about being notified of when a script ends?
 
