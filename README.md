@@ -1,7 +1,8 @@
 # divvy
 
 `divvy` is a log parsing and monitoring tool for system admins and developers. 
-It wraps the functionality of `tee`, `tail`, `grep`, and `mail` all into one.
+It wraps the functionality of `tee`, `tail`, `grep`, `ccze` and `mail` all into one,
+with some extras.
 
 ## One line install
 
@@ -9,7 +10,7 @@ Want to jump right into it? This will work on most *nix systems. You _may_ have 
 
 `perl -e "$(curl -fsSL https://gist.github.com/raw/895149/install-divvy)"`
 
-Now read all about what you just installed :)
+Now read all about what you've just installed :)
 
 ## The basics
 
@@ -59,15 +60,15 @@ fatal errors in red? No prob.
 
 How about kicking off some process every time something specific shows up in the log?
 
-`$ divvy --follow --match0='out of space' --exec0='find /home -name "pron*.*" | rm ' app_log.txt`
+`$ divvy --follow --match0='out of space' --exec0='rm -rf tmp/*' maillog`
 
-How about being notified of when a script ends?
+How about being notified of when a script ends too?
 
 `$ ./alter-table | divvy --complete=katzgrau@gmail.com --match0=ERROR --log0=errors.txt`
 
 How about color-coding your output?
 
-`$ divvy --follow --match0=ERROR --screen0='bold red' --match1=WARN --screen1=yellow --match2=INFO --screen2=blue ap_log.txt` 
+`$ divvy --follow --match0=ERROR --screen0='bold red on_black' --match1=WARN --screen1=yellow --match2=INFO --screen2=blue ap_log.txt` 
 
 ## Feature List
 

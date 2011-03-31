@@ -113,7 +113,11 @@ sub validate_args() {
     } else {
       $logfile = $_; 
     }
-  }  
+  }
+  # Were any matches specified?
+	fatal("No patterns were specified! Nothing for divvy to do..") if(0 == (keys %patterns));	
+	# Were any handlers specified?
+	fatal("No handlers were specified! Nothing for divvy to do..") if(0 == (keys %index_to_handler));
 }
 
 # This is the main program loop. Roll through standard input and try matching
