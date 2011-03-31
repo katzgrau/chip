@@ -31,10 +31,12 @@ no strict 'refs';
 
 use Data::Dumper;
 use Term::ANSIColor;
+# Add a handler to catch kill signals
+use sigtrap 'handler' => \&safe_exit, 'INT', 'ABRT', 'QUIT', 'TERM';
 
 # If you make a new handler in the handler section, add it here
 # Will hold keys to arrays of index ids to handers
-my @handler_types = qw/log exec pexec screen mail/;
+my @handler_types = qw/log exec pexec screen email/;
 
 # Will hold options/switched
 my @option_types = qw/follow complete/;
@@ -42,6 +44,17 @@ my @option_types = qw/follow complete/;
 # Will hold options available for specific matches
 my @match_option_types = qw/color/;
 
+# This maps the short form to the long form
+my %flag_aliases = (
+  'L' => 'log',
+	'x' => 'exec',
+	'X' => 'pexec',
+	's' => 'screen',
+	'm' => 'match',
+	'e' => 'email',
+	'f' => 'follow',
+	'c' => 'complete'
+);
 # Will hold the version of divvy. No, I don't feel a constant is needed.
 my $version = '0.1a';
 
@@ -74,25 +87,31 @@ my $start_time = localtime;
 # ------------------------------------------------------------
 
 # Validate all of the command line arguments, parse them
-#  and store them in global vars for later use
+#  and store them in global vars for later use. We don't 
+#  use perl's getopt here since our option naming is sort
+#  of dynamic
 sub validate_args() {
   # Go through each argument
   foreach (@ARGV) {
     # Does it look like a valid argument?
     if(my ($handler, $index, $argument) = 
-      /\-\-([a-zA-Z\-]+)(\d+)?=?(?:["']?)([^'"]*)(?:["']?)/) {
+      /\-\-?([a-zA-Z\-]+)(\d+)?=?(?:["']?)([^'"]*)(?:["']?)/) {
+			# Is this a short-form of a flag? Translate it
+			if(defined($flag_aliases{$handler})) {
+			  $handler = $flag_aliases{$handler};
+			}
       # Check to see what type of argument this is
       if($handler eq "match") {
         # It's a 'match' argument specifying a pattern
         $patterns{$index} = $argument; 
-      } elsif (defined $handlers{$handler}) {
+      } elsif (defined($index) && defined($handlers{$handler})) {
         # It's a handler specifying what to do with a match
         $handlers{$handler}{$index} = $argument;    
         if(!defined($index_to_handler{$index})) {
           $index_to_handler{$index} = [];
         }
         push(@{$index_to_handler{$index}}, $handler);
-      } elsif (defined $options{$handler}){
+      } elsif (defined($options{$handler})){
         # It's an option. We'll mark that it was specified
         $options{$handler} = ($argument ? $argument : 1);
       } elsif (defined($index) && grep(/^$handler$/, @match_option_types)) {
@@ -101,10 +120,10 @@ sub validate_args() {
           $match_options{$index} = {}; 
         }
         $match_options{$index}{$handler} = $argument;
-      } elsif ($handler eq 'help') {
+      } elsif ($handler eq 'friend') {
+        tell_friend($argument);
+			} elsif ($handler eq 'help') {
         print_usage();
-      } elsif ($handler eq 'install') {
-        install();
       } else {
         # If it's not a match, handler, or option, it must be a log file to 
         #  open
@@ -115,9 +134,9 @@ sub validate_args() {
     }
   }
   # Were any matches specified?
-	fatal("No patterns were specified! Nothing for divvy to do..") if(0 == (keys %patterns));	
+	fatal("No patterns were specified! Try divvy --help") if(0 == (keys %patterns));	
 	# Were any handlers specified?
-	fatal("No handlers were specified! Nothing for divvy to do..") if(0 == (keys %index_to_handler));
+	fatal("No handlers were specified! Try divvy --help") if(0 == (keys %index_to_handler));
 }
 
 # This is the main program loop. Roll through standard input and try matching
@@ -265,6 +284,12 @@ sub fatal {
   exit;
 }
 
+# A handler for catching kill signal.
+sub safe_exit {
+  print "\nKill signal caught .. exiting..\n";
+	exit(1);
+}
+
 # Send an email!
 #  Todo: Do this in some very-portable way
 #  Takes to, subject, body
@@ -279,23 +304,86 @@ sub send_email {
 
 # Print a help message. This will print instructions and exit.
 sub print_usage {
-  print qq/  divvy version $version
-    Written by Kenny Katzgrau <katzgrau\@gmail.com>
+  print qq/divvy version $version
+Usage: divvy [options] [--match#] [--handler#] [filename]
+Example: divvy --follow --match0=ERROR --email0='katzgrau\@gmail.com' log.txt
 
-  Usage: divvy [options] [--matchN] [--handlerN] [filename]
+Divvy will open a specified log file, or standard input if one is not
+provided. It will look for 'matches' that you specify with a match flag,
+and a number that you make up, like: --match0='ERROR'
 
-  Example: divvy --follow --match0=ERROR --mail0='katzgrau\@gmail.com' log.txt
+You can then attach handler to that match by specifying the handler name
+and the same number. Like: --log0=errors.txt
 
+So if you wanted to open server-log.txt, and stick all errors in errors.txt,
+you would:
+
+ divvy --match0=ERROR --log0=errors.txt server-log.txt
+       --or in shorthand--
+ divvy -m0=ERROR -L0=errors.txt server-log.txt
+
+You can do many things at once, like logging everything matching 'error' 
+to the screen, logging all lines to a file, and get an email when matches 
+are found:
+
+ \$ .\/process | divvy -m0=error -s0=red -e0=me\@d.com -m1='.*' -L1=log.txt
+
+But that's not all divvy does. It will send notifications when lines are
+matched, log lines, print the on the screen, or any combination, and more.
+
+Matching Lines (at least one required):
+ -m\/--match#=<pattern> Catch all lines matching <pattern>, a perl regular
+                        expression, and execute any handlers with the same #
+
+Handlers:
+ -e\/--email#=<email>    Send line to email address specified
+ -L\/--log#=<file>       Log line to a file
+ -s\/--screen#[=color]   Output line on the screen in an optional color
+ -x\/--exec#=<cmd>       Execute an arbitrary shell command
+ -X\/--pexec#=<cmd>      Execute an arbitrary shell command, but pipe
+                        the line in
+
+Global Options:
+ -f\/--follow           Valid when an input file is specified. Track changes.
+ -c\/--complete=<email> Notify when complete (for long tasks piped in)
+
+Other:
+    --friend=<email>   Tell a friend about divvy (oh c'mon)
+
+Written by Kenny Katzgrau <katzgrau\@gmail.com>
 /;
   exit;
 }
 
-# Install divvy! install it to /usr/local/bin
-sub install {
-  print "Installing divvy to /usr/local/bin ..\n"; 
-  fatal("The divvy filename can't be figured out..") if !$0;
-  exit;
+# Tell a friend about divvy. First social terminal script :)
+sub tell_friend {
+	my ($email) = @_;
+  print "Sweet! Thanks for spreading the word! What's your name? ";
+	# Get their name
+	my $name = <STDIN>;
+	chomp($name);
+
+	# Set the contents. Really, sometimes I just write comments
+	#  to space out code and make it look better.
+	my $body = <<b;
+Hey there,
+  
+Check out this new log parsing and monitoring script named divvy!
+
+* http://github.com/katzgrau/divvy - It's pretty cool.
+
+This was sent to you by $name, probably because they think you
+might find it useful :)
+
+- divvy
+b
+
+  # Send the emaili, and peace
+  send_email($email, "Check out divvy!", $body);
+	print "Email sent (I think). Thanks again $name!\n";
+	exit;
 }
+
 # ------------------------------------------------------------------------------
 # Section: Match Handlers
 #  Any match specified by a user can (and should) have a corresponding handler 
