@@ -332,7 +332,7 @@ But that's not all divvy does. It will send notifications when lines are
 matched, log lines, print the on the screen, or any combination, and more.
 
 Matching Lines (at least one required):
- -m\/--match#=<pattern> Catch all lines matching <pattern>, a perl regular
+ -m\/--match#=<pattern>  Catch all lines matching <pattern>, a perl regular
                         expression, and execute any handlers with the same #
 
 Handlers:
@@ -469,7 +469,8 @@ sub handle_log {
   if(get_opt('follow')) {
     # If we are following the file, we want to flush the buffer after every
     #  line (maybe someone is tailing our logs!). Set the filehandle as 'hot'
-    select((select({$log_files{$index}}), $|=1)[0]);
+		my $handle = $log_files{$index};
+		select((select($handle), $|=1)[0]);
   }
   print {$log_files{$index}} $line."\n";
 }
