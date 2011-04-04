@@ -419,7 +419,7 @@ my %buffers = ();
 sub handle_email {
   # Get our variabled ready
   my ($index, $line) = @_;
-  my $email = get_arg('mail', $index);
+  my $email = get_arg('email', $index);
   my $pattern = $patterns{$index};
 
   if(get_opt('follow')) {
