@@ -52,9 +52,9 @@ send all output to one file and all errors to another.
 
 Want to get notified whenever a fatal (like an HTTP 500) error occurs and is logged to some file? 
 Want to log them separately too? Want to view all output as it goes by (like `tail`), but highlight 
-fatal errors in red? No prob.
+fatal errors in red? No prob. This time, in shorthand:
 
-`$ divvy --follow --match0='HTTP 500' --screen0='red' --mail0=katzgrau@gmail.com --log0=fatal.txt --match1='.*' --screen1 error_log.txt` 
+`$ divvy -f -m0='HTTP 500' -s0='red' -e0=katzgrau@gmail.com -L0=fatal.txt --m1='.*' -s1 error_log.txt` 
 
 ## More Fun Stuff
 

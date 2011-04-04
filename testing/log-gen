@@ -20,9 +20,10 @@
   "WARN  - 2011-01-01 00:01:01 --> Access denied to admin section by logged in user: 'nighthawk', IP 72.64.62.104",
   "WARN  - 2011-01-01 00:01:01 --> Access denied to admin section by logged in user: 'nighthawk', IP 72.64.62.104",
   "WARN  - 2011-01-01 00:01:01 --> Access denied to admin section by logged in user: 'nighthawk', IP 72.64.62.104",
-	"FATAL - 2011-01-01 00:00:01 --> Could not connect to database!",
   "ERROR - 2011-01-01 00:01:01 --> Could not connect to Redis!",
   "ERROR - 2011-01-01 00:01:01 --> Could not upload file to s3! /var/www/uploads/something.jpg",
+	"FATAL - 2011-01-01 00:00:01 --> Could not connect to database!",
+	"DEMO  - 2011-01-01 00:00:01 --> The database has no tables lol",
 );
 
 
