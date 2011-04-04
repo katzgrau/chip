@@ -1,4 +1,4 @@
-#!/usr/bin/perl -w
+#!/usr/bin/env perl
 
 # divvy is a command line utility for splitting text lines (like those from log
 #  files) into separate files based on pattern matching.  
@@ -30,7 +30,7 @@
 use strict;
 no strict 'refs';
 
-use Data::Dumper;
+#use Data::Dumper;
 use Term::ANSIColor;
 # Add a handler to catch kill signals
 use sigtrap 'handler' => \&safe_exit, 'INT', 'ABRT', 'QUIT', 'TERM';
