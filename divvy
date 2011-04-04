@@ -416,7 +416,7 @@ sub handle_pexec {
 
 # Any matches should be emailed to the address specified by the argument
 my %buffers = ();
-sub handle_mail {
+sub handle_email {
   # Get our variabled ready
   my ($index, $line) = @_;
   my $email = get_arg('mail', $index);
@@ -443,7 +443,7 @@ sub handle_mail {
 }
 
 # A closing hook for the mail handler
-sub handle_mail_close() {
+sub handle_email_close() {
   if(!get_opt('follow')) {
     # Send each specified recipient the buffer that was
     while(my ($email, $patterns) = each %buffers) {
