@@ -32,12 +32,13 @@ no strict 'refs';
 
 #use Data::Dumper;
 use Term::ANSIColor;
+use Text::Wrap qw(wrap);
 # Add a handler to catch kill signals
 use sigtrap 'handler' => \&safe_exit, 'INT', 'ABRT', 'QUIT', 'TERM';
 
 # If you make a new handler in the handler section, add it here
 # Will hold keys to arrays of index ids to handers
-my @handler_types = qw/log exec pexec screen email/;
+my @handler_types = qw/log exec pexec screen email cowsay/;
 
 # Will hold options/switched
 my @option_types = qw/follow complete/;
@@ -54,7 +55,8 @@ my %flag_aliases = (
 	'm' => 'match',
 	'e' => 'email',
 	'f' => 'follow',
-	'c' => 'complete'
+	'c' => 'complete',
+	'C' => 'cowsay'
 );
 # Will hold the version of divvy. No, I don't feel a constant is needed.
 my $version = '0.1a';
@@ -337,6 +339,7 @@ Matching Lines (at least one required):
                         expression, and execute any handlers with the same #
 
 Handlers:
+ -c\/--cow#              Cowsay the line
  -e\/--email#=<email>    Send line to email address specified
  -L\/--log#=<file>       Log line to a file
  -s\/--screen#[=color]   Output line on the screen in an optional color
@@ -398,7 +401,7 @@ b
 # inserted in that command
 sub handle_exec {
   my ($index, $line) = @_;
-  my $cmd = get_arg('exec', $index);
+ my $cmd = get_arg('exec', $index);
   $cmd =~ s/\{\{LINE\}\}/$line/g;
   `$cmd`;  
 }
@@ -499,6 +502,56 @@ sub handle_screen {
 sub handle_screen_post_search {
   $did_print = 0;
 }
+
+my $COW = <<COW;
+         \\    ^__^ 
+          \\   (oo)\_______
+              (__)\       )\/\\
+                 ||----w |
+                 ||     ||
+COW
+
+sub bubble {
+  my ($text, $columns) = @_;
+  $Text::Wrap::columns = $columns;
+
+  my @lines = split "\n", wrap("", "", $text);
+  my $max = -1;
+
+  foreach my $line (@lines) {
+    if (length $line > $max) {
+      $max = length $line;
+    }
+  }
+
+  if ($#lines > 1) {
+      print "/" . "-" x ($max + 2) . "\\\n";
+      foreach my $line (@lines) {
+          print "| " . sprintf("%-" . $max . "s", $line) . " |\n";
+      }
+      print "\\" . "-" x ($max + 2) . "/\n";
+  }
+  else {
+      print " ." . "-" x (length $lines[0]) . ".\n";
+      print "( " . $lines[0] . " )\n";
+      print " `" . "-" x (length $lines[0]) . "'\n";
+  }
+}
+
+sub handle_cowsay {
+  my ($index, $line) = @_;
+  my $cow = get_arg('cowsay', $index);
+  if ($cow) {
+    &bubble($line, $cow);
+    print $COW;
+  }
+  else {
+    print "$line\n" if !$did_print;
+  }
+  $did_print = 1;
+}
+
+
 
 # -----------------------------------------------------------------------------
 # Kickoff the main program loop
