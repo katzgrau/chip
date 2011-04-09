@@ -339,7 +339,7 @@ Matching Lines (at least one required):
                         expression, and execute any handlers with the same #
 
 Handlers:
- -c\/--cow#              Cowsay the line
+ -C\/--cow#              Cowsay the line
  -e\/--email#=<email>    Send line to email address specified
  -L\/--log#=<file>       Log line to a file
  -s\/--screen#[=color]   Output line on the screen in an optional color
