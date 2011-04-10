@@ -132,6 +132,9 @@ sub validate_args() {
       }
     } else {
       $logfile = $_; 
+			my ($u, $h, $p) = parse_ssh($logfile);
+			#print "U: $u; H: $h; P: $p\n"; 
+			#print construct_remote($logfile) . "\n"; exit;
     }
   }
   # Were any matches specified?
@@ -207,16 +210,31 @@ sub get_input {
     # A logfile was specified as input
     $input_handle = 'input_handle';
     if(get_opt('follow')) {
-      # Pipe from tail! First, WTH is tail? /usr/bin? Don't be naive..
-      my $tail = `which tail`;
-      chomp($tail);
-      # Start the tail 0 lines of initial output
-      open $input_handle, '-|', $tail, '-f', '-n', '0', $logfile;
-    } else {
-      # Uh oh, the log file doesn't exist :'(
-      fatal("Input file specified does not exist: $logfile") if (! -e $logfile);
-      open $input_handle, '<', $logfile;
-    }
+			if(is_ssh($logfile)) { 
+			  # Remote file, and we want to tail it
+        my $ssh = construct_remote($logfile, 1);
+				# Open ssh!
+				open $input_handle, '-|', $ssh; 
+			} else {
+				# Local file that we need to tail
+			  # Pipe from tail! First, WTH is tail? /usr/bin? Don't be naive..
+        my $tail = `which tail`;
+        chomp($tail);
+        # Start the tail 0 lines of initial output
+        open $input_handle, '-|', $tail, '-f', '-n', '0', $logfile;
+		  }
+		} else {
+			if(is_ssh($logfile)) {
+		    # Remote file, and we just want to 'grep' through it
+			  my $ssh = construct_remote($logfile, 0);
+				open $input_handle, '-|', $ssh;
+		  } else {
+				# Local file, 'grep' through it
+        # Uh oh, the log file doesn't exist :'(
+			  fatal("Input file specified does not exist: $logfile") if (! -e $logfile);
+        open $input_handle, '<', $logfile;
+      }
+		}
   } else {
     # Read from STDIN instead
     $input_handle = *STDIN;
@@ -289,6 +307,37 @@ sub fatal {
 sub safe_exit {
   print "\nKill signal caught .. exiting..\n";
 	exit(1);
+}
+
+# Is this file a remote via ssh
+sub is_ssh {
+  ($_) = @_;
+	return /.*:.*/;
+}
+
+# Try and parse the username, host, and path from an ssh address
+sub parse_ssh {
+  ($_) = @_;
+	return /([^\@]*(?=@))?@?([^\@:]+):(.*)/;
+}
+
+# Construct an ssh command that will grab/tail remote file contents
+sub construct_remote {
+  my ($arg, $is_follow) = @_;
+	my ($user, $host, $path) = parse_ssh($arg);
+  if(defined($user)) {
+		if($is_follow) {
+	    return "ssh $user\@$host 'tail -n 0 -f $path'";
+	  } else {
+		  return "ssh $user\@$host 'cat $path'";
+		}
+	} else {
+		if($is_follow) {
+	    return "ssh $host 'tail -n 0 -f $path'";
+	  } else { 
+		  return "ssh $host 'cat $path'";
+		}
+	}
 }
 
 # Send an email!
