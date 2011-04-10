@@ -132,9 +132,6 @@ sub validate_args() {
       }
     } else {
       $logfile = $_; 
-			my ($u, $h, $p) = parse_ssh($logfile);
-			#print "U: $u; H: $h; P: $p\n"; 
-			#print construct_remote($logfile) . "\n"; exit;
     }
   }
   # Were any matches specified?
@@ -309,13 +306,16 @@ sub safe_exit {
 	exit(1);
 }
 
-# Is this file a remote via ssh
+# Is this filepath a remote via ssh?
+# TODO: Is there a better way to do this?
 sub is_ssh {
   ($_) = @_;
 	return /.*:.*/;
 }
 
 # Try and parse the username, host, and path from an ssh address
+#  TODO: See above.
+#  Returns (username, host, filepath). username might come back empty
 sub parse_ssh {
   ($_) = @_;
 	return /([^\@]*(?=@))?@?([^\@:]+):(.*)/;
