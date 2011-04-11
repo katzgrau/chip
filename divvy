@@ -30,7 +30,7 @@
 use strict;
 no strict 'refs';
 
-#use Data::Dumper;
+use Data::Dumper;
 use Term::ANSIColor;
 # Add a handler to catch kill signals
 use sigtrap 'handler' => \&safe_exit, 'INT', 'ABRT', 'QUIT', 'TERM';
@@ -86,6 +86,9 @@ my %index_to_handler = ();
 
 # Holds script start time
 my $start_time = localtime;
+
+# Is this a child process?
+my $is_child = 0;
 
 # ------------------------------------------------------------
 # Section: Core function definitions
@@ -169,6 +172,15 @@ sub main {
   # Get the input stream (STDIN or a file)
   my $input = get_input();
 
+	# If this is a child process, we have to tell the parent that
+	#  we're ready, and begin waiting until the parent is ready
+	if($is_child) {
+	  if(is_ssh($logfile)) {
+		  $_ = <STDIN>;
+		}
+	  unlock('ready');
+		wait_lock('divvy');
+	}
   # Execute any pre-processing hooks
   execute_all_hooks('open');
 
@@ -213,15 +225,35 @@ sub main {
 sub spawn_workers {
 	if(@logfiles > 1)
 	{
-	  # Fork of workers
-	  foreach my $file (@logfiles) {
+		# We are currently in the parent process
+		my $parent = 1;
+		# Set a lock that will act as a flag to children so
+		#  they know when to begin processing
+		set_lock('divvy');
+	  # Fork off workers
+		FORKS: foreach my $file (@logfiles) {
       $logfile = $file;
+			set_lock('ready');
 			my $fork = fork();
-	    if($fork) {
+	    if($fork > 0) {
 	      # We're the parent!
         $workers{$fork} = 1;
-	    }
+				wait_lock('ready');
+	    } else {
+				$parent   = 0;
+				$is_child = 1;
+			  last FORKS;
+			}
     }
+		if($parent) {
+		  # Remove the lock. Now children to kick off
+		  unlock('divvy');
+		  # Wait for workers to exit
+			foreach my $pid (keys %workers) {
+			  waitpid($pid, 0);
+			}
+			exit;
+		}
 	} elsif(@logfiles == 1) {
 	  $logfile = $logfiles[0];
 	}
@@ -291,6 +323,32 @@ sub execute_all_hooks {
       &$func();
     }
   }
+}
+
+# Set a lock on a given name
+sub set_lock {
+  my ($name) = @_;
+	$name = 'divvy-'.rand(10000) if(!defined($name));
+  `touch /tmp/$name`;
+	return $name;
+}
+
+# Remove a lock
+sub unlock {
+  my ($name) = @_;
+  `rm /tmp/$name` if(-e "/tmp/$name"); 
+}
+
+# Wait until a lock with a given name goes away
+sub wait_lock {
+  my ($name) = @_;
+	WAIT: while(1) {
+	  if(! -e "/tmp/$name") {
+		  last WAIT;
+		} else {
+		  sleep(1);
+		}
+	}
 }
 
 # Given the type of handler, and the index of the match, get the 
@@ -541,7 +599,7 @@ sub handle_log {
   if(!defined($log_files{$index})) {
     $log_files{$index} = "file_handle_$index"; 
     my $filename = get_arg("log", $index);
-    open($log_files{$index}, '>', $filename);
+    open($log_files{$index}, '>>', $filename);
   }
   # Write to the log file
   if(get_opt('follow')) {
