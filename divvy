@@ -66,11 +66,17 @@ my %patterns = ();
 #  specified, we'll use STDIN
 my $logfile = '';
 
+# Will hold 
+my @logfiles = ();
+
 # Will hold the functions for dealing with lines matching patterns
 my %handlers = ();
 
 # Will hold the options that have been specified
 my %options = ();
+
+# Will hold the PIDs of workers
+my %workers = ();
 
 # Will hold options for specific matched
 my %match_options = ();
@@ -128,10 +134,10 @@ sub validate_args() {
       } else {
         # If it's not a match, handler, or option, it must be a log file to 
         #  open
-        $logfile = $handler; 
+        push(@logfiles, $handler);	
       }
     } else {
-      $logfile = $_; 
+      push(@logfiles, $_);
     }
   }
   # Were any matches specified?
@@ -156,6 +162,9 @@ sub main {
  
   # Second, validate the args!
   validate_args();
+
+	# Spawn off workers
+	spawn_workers();
 
   # Get the input stream (STDIN or a file)
   my $input = get_input();
@@ -197,6 +206,25 @@ sub main {
     my $body = "divvy's done.\n\nCommand: $0 $cmd\nStarted: $start_time\nComplete: $localtime\nHost: $hostname";
     send_email($email, "divvy completed @ $localtime", $body);
   }
+}
+
+# If multiple log files were specified, spawn children to
+#  handle them
+sub spawn_workers {
+	if(@logfiles > 1)
+	{
+	  # Fork of workers
+	  foreach my $file (@logfiles) {
+      $logfile = $file;
+			my $fork = fork();
+	    if($fork) {
+	      # We're the parent!
+        $workers{$fork} = 1;
+	    }
+    }
+	} elsif(@logfiles == 1) {
+	  $logfile = $logfiles[0];
+	}
 }
 
 # Get the input stream. it might be a file specified as an argument. If no 
