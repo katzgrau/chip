@@ -1,4 +1,4 @@
-#!/usr/bin/env perl
+#!/usr/bin/perl -w
 
 # divvy is a command line utility for splitting text lines (like those from log
 #  files) into separate files based on pattern matching.  
@@ -48,13 +48,13 @@ my @match_option_types = qw/color/;
 # This maps the short form to the long form
 my %flag_aliases = (
   'L' => 'log',
-	'x' => 'exec',
-	'X' => 'pexec',
-	's' => 'screen',
-	'm' => 'match',
-	'e' => 'email',
-	'f' => 'follow',
-	'c' => 'complete'
+  'x' => 'exec',
+  'X' => 'pexec',
+  's' => 'screen',
+  'm' => 'match',
+  'e' => 'email',
+  'f' => 'follow',
+  'c' => 'complete'
 );
 # Will hold the version of divvy. No, I don't feel a constant is needed.
 my $version = '0.1a';
@@ -90,6 +90,9 @@ my $start_time = localtime;
 # Is this a child process?
 my $is_child = 0;
 
+# If we use ssh to read a remote file, the pid
+my $ssh_pid = 0;
+
 # ------------------------------------------------------------
 # Section: Core function definitions
 #  If you want to add new handlers or things like that, add them 
@@ -106,10 +109,10 @@ sub validate_args() {
     # Does it look like a valid argument?
     if(my ($handler, $index, $argument) = 
       /\-\-?([a-zA-Z\-]+)(\d+)?=?(?:["']?)([^'"]*)(?:["']?)/) {
-			# Is this a short-form of a flag? Translate it
-			if(defined($flag_aliases{$handler})) {
-			  $handler = $flag_aliases{$handler};
-			}
+      # Is this a short-form of a flag? Translate it
+      if(defined($flag_aliases{$handler})) {
+        $handler = $flag_aliases{$handler};
+      }
       # Check to see what type of argument this is
       if($handler eq "match") {
         # It's a 'match' argument specifying a pattern
@@ -132,21 +135,21 @@ sub validate_args() {
         $match_options{$index}{$handler} = $argument;
       } elsif ($handler eq 'friend') {
         tell_friend($argument);
-			} elsif ($handler eq 'help') {
+      } elsif ($handler eq 'help') {
         print_usage();
       } else {
         # If it's not a match, handler, or option, it must be a log file to 
         #  open
-        push(@logfiles, $handler);	
+        push(@logfiles, $handler);  
       }
     } else {
       push(@logfiles, $_);
     }
   }
   # Were any matches specified?
-	fatal("No patterns were specified! Try divvy --help") if(0 == (keys %patterns));	
-	# Were any handlers specified?
-	fatal("No handlers were specified! Try divvy --help") if(0 == (keys %index_to_handler));
+  fatal("No patterns were specified! Try divvy --help") if(0 == (keys %patterns));  
+  # Were any handlers specified?
+  fatal("No handlers were specified! Try divvy --help") if(0 == (keys %index_to_handler));
 }
 
 # This is the main program loop. Roll through standard input and try matching
@@ -166,26 +169,26 @@ sub main {
   # Second, validate the args!
   validate_args();
 
-	# Spawn off workers
-	spawn_workers();
+  # Spawn off workers
+  spawn_workers();
 
   # Get the input stream (STDIN or a file)
   my $input = get_input();
 
-	# If this is a child process, we have to tell the parent that
-	#  we're ready, and begin waiting until the parent is ready
-	if($is_child) {
-	  if(is_ssh($logfile)) {
-			CHECK: while(my $line = <$input>) {
-				chomp($line);
-				if($line eq 'READY') {
-				  last CHECK;
-				}
-			}
-		}
-	  unlock('ready');
-		wait_lock('divvy');
-	}
+  # If this is a child process, we have to tell the parent that
+  #  we're ready, and begin waiting until the parent is ready
+  if($is_child) {
+    if(is_ssh($logfile)) {
+      CHECK: while(my $line = <$input>) {
+        chomp($line);
+        if($line eq 'READY') {
+          last CHECK;
+        }
+      }
+    }
+    unlock('ready');
+    wait_lock('divvy');
+  }
   # Execute any pre-processing hooks
   execute_all_hooks('open');
 
@@ -228,40 +231,39 @@ sub main {
 # If multiple log files were specified, spawn children to
 #  handle them
 sub spawn_workers {
-	if(@logfiles > 1)
-	{
-		# We are currently in the parent process
-		my $parent = 1;
-		# Set a lock that will act as a flag to children so
-		#  they know when to begin processing
-		set_lock('divvy');
-	  # Fork off workers
-		FORKS: foreach my $file (@logfiles) {
+  if(@logfiles > 1) {
+    # We are currently in the parent process
+    my $parent = 1;
+    # Set a lock that will act as a flag to children so
+    #  they know when to begin processing
+    set_lock('divvy');
+    # Fork off workers
+    FORKS: foreach my $file (@logfiles) {
       $logfile = $file;
-			set_lock('ready');
-			my $fork = fork();
-	    if($fork > 0) {
-	      # We're the parent!
+      set_lock('ready');
+      my $fork = fork();
+      if($fork > 0) {
+        # We're the parent!
         $workers{$fork} = 1;
-				wait_lock('ready');
-	    } else {
-				$parent   = 0;
-				$is_child = 1;
-			  last FORKS;
-			}
+        wait_lock('ready');
+      } else {
+        $parent   = 0;
+        $is_child = 1;
+        last FORKS;
+      }
     }
-		if($parent) {
-		  # Remove the lock. Now children to kick off
-		  unlock('divvy');
-		  # Wait for workers to exit
-			foreach my $pid (keys %workers) {
-			  waitpid($pid, 0);
-			}
-			exit;
-		}
-	} elsif(@logfiles == 1) {
-	  $logfile = $logfiles[0];
-	}
+    if($parent) {
+      # Remove the lock. Now children to kick off
+      unlock('divvy');
+      # Wait for workers to exit
+      foreach my $pid (keys %workers) {
+        waitpid($pid, 0);
+      }
+      exit;
+    }
+  } elsif(@logfiles == 1) {
+    $logfile = $logfiles[0];
+  }
 }
 
 # Get the input stream. it might be a file specified as an argument. If no 
@@ -272,31 +274,31 @@ sub get_input {
     # A logfile was specified as input
     $input_handle = 'input_handle';
     if(get_opt('follow')) {
-			if(is_ssh($logfile)) { 
-			  # Remote file, and we want to tail it
+      if(is_ssh($logfile)) { 
+        # Remote file, and we want to tail it
         my $ssh = construct_remote($logfile, 1);
-				# Open ssh!
-				open $input_handle, '-|', $ssh; 
-			} else {
-				# Local file that we need to tail
-			  # Pipe from tail! First, WTH is tail? /usr/bin? Don't be naive..
+        # Open ssh!
+        $ssh_pid = open $input_handle, '-|', $ssh; 
+      } else {
+        # Local file that we need to tail
+        # Pipe from tail! First, WTH is tail? /usr/bin? Don't be naive..
         my $tail = `which tail`;
         chomp($tail);
         # Start the tail 0 lines of initial output
         open $input_handle, '-|', $tail, '-f', '-n', '0', $logfile;
-		  }
-		} else {
-			if(is_ssh($logfile)) {
-		    # Remote file, and we just want to 'grep' through it
-			  my $ssh = construct_remote($logfile, 0);
-				open $input_handle, '-|', $ssh;
-		  } else {
-				# Local file, 'grep' through it
+      }
+    } else {
+      if(is_ssh($logfile)) {
+        # Remote file, and we just want to 'grep' through it
+        my $ssh = construct_remote($logfile, 0);
+        open $input_handle, '-|', $ssh;
+      } else {
+        # Local file, 'grep' through it
         # Uh oh, the log file doesn't exist :'(
-			  fatal("Input file specified does not exist: $logfile") if (! -e $logfile);
+        fatal("Input file specified does not exist: $logfile") if (! -e $logfile);
         open $input_handle, '<', $logfile;
       }
-		}
+    }
   } else {
     # Read from STDIN instead
     $input_handle = *STDIN;
@@ -333,9 +335,9 @@ sub execute_all_hooks {
 # Set a lock on a given name
 sub set_lock {
   my ($name) = @_;
-	$name = 'divvy-'.rand(10000) if(!defined($name));
+  $name = 'divvy-'.rand(10000) if(!defined($name));
   `touch /tmp/$name`;
-	return $name;
+  return $name;
 }
 
 # Remove a lock
@@ -347,13 +349,13 @@ sub unlock {
 # Wait until a lock with a given name goes away
 sub wait_lock {
   my ($name) = @_;
-	WAIT: while(1) {
-	  if(! -e "/tmp/$name") {
-		  last WAIT;
-		} else {
-		  sleep(1);
-		}
-	}
+  WAIT: while(1) {
+    if(! -e "/tmp/$name") {
+      last WAIT;
+    } else {
+      sleep(1);
+    }
+  }
 }
 
 # Given the type of handler, and the index of the match, get the 
@@ -393,15 +395,18 @@ sub fatal {
 
 # A handler for catching kill signal.
 sub safe_exit {
-  print "\nKill signal caught .. exiting..\n";
-	exit(1);
+  if($ssh_pid > 0) {
+    print "Killing $ssh_pid\n";
+    kill 1, $ssh_pid;
+  }
+  exit(1);
 }
 
 # Is this filepath a remote via ssh?
 # TODO: Is there a better way to do this?
 sub is_ssh {
   ($_) = @_;
-	return /.*:.*/;
+  return /.*:.*/;
 }
 
 # Try and parse the username, host, and path from an ssh address
@@ -409,27 +414,27 @@ sub is_ssh {
 #  Returns (username, host, filepath). username might come back empty
 sub parse_ssh {
   ($_) = @_;
-	return /([^\@]*(?=@))?@?([^\@:]+):(.*)/;
+  return /([^\@]*(?=@))?@?([^\@:]+):(.*)/;
 }
 
 # Construct an ssh command that will grab/tail remote file contents
 sub construct_remote {
   my ($arg, $is_follow) = @_;
-	my ($user, $host, $path) = parse_ssh($arg);
-	my $args = "-f";
+  my ($user, $host, $path) = parse_ssh($arg);
+  my $args = "-f -t";
   if(defined($user)) {
-		if($is_follow) {
-	    return "ssh $args $user\@$host 'echo READY ; tail -n 0 -f $path'";
-	  } else {
-		  return "ssh $args $user\@$host 'echo READY ; cat $path'";
-		}
-	} else {
-		if($is_follow) {
-	    return "ssh $args $host 'echo READY ; tail -n 0 -f $path'";
-	  } else { 
-		  return "ssh $args $host 'echo READY ; cat $path'";
-		}
-	}
+    if($is_follow) {
+      return "ssh $args $user\@$host 'echo READY ; tail -n 0 -f $path'";
+    } else {
+      return "ssh $args $user\@$host 'echo READY ; cat $path'";
+    }
+  } else {
+    if($is_follow) {
+      return "ssh $args $host 'echo READY ; tail -n 0 -f $path'";
+    } else { 
+      return "ssh $args $host 'echo READY ; cat $path'";
+    }
+  }
 }
 
 # Send an email!
@@ -499,15 +504,15 @@ Written by Kenny Katzgrau <katzgrau\@gmail.com>
 
 # Tell a friend about divvy. First social terminal script :)
 sub tell_friend {
-	my ($email) = @_;
+  my ($email) = @_;
   print "Sweet! Thanks for spreading the word! What's your name? ";
-	# Get their name
-	my $name = <STDIN>;
-	chomp($name);
+  # Get their name
+  my $name = <STDIN>;
+  chomp($name);
 
-	# Set the contents. Really, sometimes I just write comments
-	#  to space out code and make it look better.
-	my $body = <<b;
+  # Set the contents. Really, sometimes I just write comments
+  #  to space out code and make it look better.
+  my $body = <<b;
 Hey there,
   
 Check out this new log parsing and monitoring script named divvy!
@@ -522,8 +527,8 @@ b
 
   # Send the emaili, and peace
   send_email($email, "Check out divvy!", $body);
-	print "Email sent (I think). Thanks again $name!\n";
-	exit;
+  print "Email sent (I think). Thanks again $name!\n";
+  exit;
 }
 
 # ------------------------------------------------------------------------------
@@ -611,8 +616,8 @@ sub handle_log {
   if(get_opt('follow')) {
     # If we are following the file, we want to flush the buffer after every
     #  line (maybe someone is tailing our logs!). Set the filehandle as 'hot'
-		my $handle = $log_files{$index};
-		select((select($handle), $|=1)[0]);
+    my $handle = $log_files{$index};
+    select((select($handle), $|=1)[0]);
   }
   print {$log_files{$index}} $line."\n";
 }
