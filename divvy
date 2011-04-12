@@ -176,7 +176,12 @@ sub main {
 	#  we're ready, and begin waiting until the parent is ready
 	if($is_child) {
 	  if(is_ssh($logfile)) {
-		  $_ = <STDIN>;
+			CHECK: while(my $line = <$input>) {
+				chomp($line);
+				if($line eq 'READY') {
+				  last CHECK;
+				}
+			}
 		}
 	  unlock('ready');
 		wait_lock('divvy');
@@ -411,17 +416,18 @@ sub parse_ssh {
 sub construct_remote {
   my ($arg, $is_follow) = @_;
 	my ($user, $host, $path) = parse_ssh($arg);
+	my $args = "-f";
   if(defined($user)) {
 		if($is_follow) {
-	    return "ssh $user\@$host 'tail -n 0 -f $path'";
+	    return "ssh $args $user\@$host 'echo READY ; tail -n 0 -f $path'";
 	  } else {
-		  return "ssh $user\@$host 'cat $path'";
+		  return "ssh $args $user\@$host 'echo READY ; cat $path'";
 		}
 	} else {
 		if($is_follow) {
-	    return "ssh $host 'tail -n 0 -f $path'";
+	    return "ssh $args $host 'echo READY ; tail -n 0 -f $path'";
 	  } else { 
-		  return "ssh $host 'cat $path'";
+		  return "ssh $args $host 'echo READY ; cat $path'";
 		}
 	}
 }
