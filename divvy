@@ -40,7 +40,7 @@ use sigtrap 'handler' => \&safe_exit, 'INT', 'ABRT', 'QUIT', 'TERM';
 my @handler_types = qw/log exec pexec screen email/;
 
 # Will hold options/switched
-my @option_types = qw/follow complete/;
+my @option_types = qw/follow complete line-only/;
 
 # Will hold options available for specific matches
 my @match_option_types = qw/color/;
@@ -52,6 +52,7 @@ my %flag_aliases = (
   'X' => 'pexec',
   's' => 'screen',
   'm' => 'match',
+	'o' => 'line-only',
   'e' => 'email',
   'f' => 'follow',
   'c' => 'complete'
@@ -65,6 +66,9 @@ my %patterns = ();
 # Will hold a filename to parse as a log file. If this isn't
 #  specified, we'll use STDIN
 my $logfile = '';
+
+# Holds an appropriately padded form of $logfile for nice output later
+my $nice_logfile = '';
 
 # Will hold 
 my @logfiles = ();
@@ -92,6 +96,9 @@ my $is_child = 0;
 
 # If we use ssh to read a remote file, the pid
 my $ssh_pid = 0;
+
+# Will hold the input stream. Try not to use this directly
+my $input = '';
 
 # ------------------------------------------------------------
 # Section: Core function definitions
@@ -173,7 +180,10 @@ sub main {
   spawn_workers();
 
   # Get the input stream (STDIN or a file)
-  my $input = get_input();
+  $input = get_input();
+
+	# Format the filename
+	format_filename();
 
   # If this is a child process, we have to tell the parent that
   #  we're ready, and begin waiting until the parent is ready
@@ -332,6 +342,21 @@ sub execute_all_hooks {
   }
 }
 
+# 
+sub format_filename {
+  if(@logfiles > 1) {
+    my $max = 0;
+		my $len = 0;
+		foreach my $file (@logfiles) {
+		  $len = length($file);
+			$max = $len if($len > $max);
+		}
+		$nice_logfile = $logfile . (' ' x ($max - length($logfile)));
+	} else {
+	  $nice_logfile = $logfile;
+	}
+}
+
 # Set a lock on a given name
 sub set_lock {
   my ($name) = @_;
@@ -396,8 +421,7 @@ sub fatal {
 # A handler for catching kill signal.
 sub safe_exit {
   if($ssh_pid > 0) {
-    print "Killing $ssh_pid\n";
-    kill 1, $ssh_pid;
+		kill 1, $ssh_pid;
   }
   exit(1);
 }
@@ -421,18 +445,20 @@ sub parse_ssh {
 sub construct_remote {
   my ($arg, $is_follow) = @_;
   my ($user, $host, $path) = parse_ssh($arg);
-  my $args = "-f -t";
+  my $args = '';
+	my $ssh  = `which ssh`;
+	chomp($ssh);
   if(defined($user)) {
     if($is_follow) {
-      return "ssh $args $user\@$host 'echo READY ; tail -n 0 -f $path'";
+      return "$ssh $args $user\@$host 'echo READY ; tail -n 0 -f $path' &";
     } else {
-      return "ssh $args $user\@$host 'echo READY ; cat $path'";
+      return "$ssh $args $user\@$host 'echo READY ; cat $path'";
     }
   } else {
     if($is_follow) {
-      return "ssh $args $host 'echo READY ; tail -n 0 -f $path'";
+      return "$ssh $args $host 'echo READY ; tail -n 0 -f $path' &";
     } else { 
-      return "ssh $args $host 'echo READY ; cat $path'";
+      return "$ssh $args $host 'echo READY ; cat $path'";
     }
   }
 }
@@ -493,7 +519,8 @@ Handlers:
 Global Options:
  -f\/--follow           Valid when an input file is specified. Track changes.
  -c\/--complete=<email> Notify when complete (for long tasks piped in)
-
+ -o\/--line-only        Do not show the filename when divvy-ing multiple
+                       files
 Other:
     --friend=<email>   Tell a friend about divvy (oh c'mon)
 
@@ -525,7 +552,7 @@ might find it useful :)
 - divvy
 b
 
-  # Send the emaili, and peace
+  # Send the email, and peace
   send_email($email, "Check out divvy!", $body);
   print "Email sent (I think). Thanks again $name!\n";
   exit;
@@ -631,6 +658,9 @@ sub handle_screen {
   my ($index, $line) = @_;
   my $color = (get_match_opt($index, 'color')
     or get_arg('screen', $index));
+  if(@logfiles > 1 && !get_opt('line-only')) {
+	  $line = "$nice_logfile: $line";
+	}
   if($color) {  
     print(colored [$color], "$line\n") if(!$did_print);
     print color 'reset';
