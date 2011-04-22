@@ -52,7 +52,7 @@ my %flag_aliases = (
   'X' => 'pexec',
   's' => 'screen',
   'm' => 'match',
-	'o' => 'line-only',
+  'o' => 'line-only',
   'e' => 'email',
   'f' => 'follow',
   'c' => 'complete'
@@ -182,8 +182,8 @@ sub main {
   # Get the input stream (STDIN or a file)
   $input = get_input();
 
-	# Format the filename
-	format_filename();
+  # Format the filename
+  format_filename();
 
   # If this is a child process, we have to tell the parent that
   #  we're ready, and begin waiting until the parent is ready
@@ -346,15 +346,15 @@ sub execute_all_hooks {
 sub format_filename {
   if(@logfiles > 1) {
     my $max = 0;
-		my $len = 0;
-		foreach my $file (@logfiles) {
-		  $len = length($file);
-			$max = $len if($len > $max);
-		}
-		$nice_logfile = $logfile . (' ' x ($max - length($logfile)));
-	} else {
-	  $nice_logfile = $logfile;
-	}
+    my $len = 0;
+    foreach my $file (@logfiles) {
+      $len = length($file);
+      $max = $len if($len > $max);
+    }
+    $nice_logfile = $logfile . (' ' x ($max - length($logfile)));
+  } else {
+    $nice_logfile = $logfile;
+  }
 }
 
 # Set a lock on a given name
@@ -421,7 +421,7 @@ sub fatal {
 # A handler for catching kill signal.
 sub safe_exit {
   if($ssh_pid > 0) {
-		kill 1, $ssh_pid;
+    kill 1, $ssh_pid;
   }
   exit(1);
 }
@@ -446,8 +446,8 @@ sub construct_remote {
   my ($arg, $is_follow) = @_;
   my ($user, $host, $path) = parse_ssh($arg);
   my $args = '';
-	my $ssh  = `which ssh`;
-	chomp($ssh);
+  my $ssh  = `which ssh`;
+  chomp($ssh);
   if(defined($user)) {
     if($is_follow) {
       return "$ssh $args $user\@$host 'echo READY ; tail -n 0 -f $path' &";
@@ -659,8 +659,8 @@ sub handle_screen {
   my $color = (get_match_opt($index, 'color')
     or get_arg('screen', $index));
   if(@logfiles > 1 && !get_opt('line-only')) {
-	  $line = "$nice_logfile: $line";
-	}
+    $line = "$nice_logfile: $line";
+  }
   if($color) {  
     print(colored [$color], "$line\n") if(!$did_print);
     print color 'reset';
