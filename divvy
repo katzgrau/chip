@@ -1,7 +1,8 @@
 #!/usr/bin/perl -w
 
 # divvy is a command line utility for splitting text lines (like those from log
-#  files) into separate files based on pattern matching.  
+#  files) into separate files based on pattern matching. It works on multiple,
+#  remote files too. 
 #
 # Laziness, Impatience, Hubris: Yes!
 #
@@ -342,7 +343,10 @@ sub execute_all_hooks {
   }
 }
 
-# 
+# If multiple files were specified, we want to pad the current
+#  logfile name with spaces so that it is the same length as
+#  the longest logfile name in the arguments. The is for nice
+#  output later. Fills global $nice_logfile 
 sub format_filename {
   if(@logfiles > 1) {
     my $max = 0;
