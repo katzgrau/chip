@@ -63,7 +63,7 @@ my %flag_aliases = (
 );
 
 # Will hold the version of divvy. No, I don't feel a constant is needed.
-my $version = '0.5';
+my $version = '0.5a';
 
 # Will hold the patterns that we're looking for
 my %patterns = ();
