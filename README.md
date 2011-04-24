@@ -108,7 +108,7 @@ To view the usage:
 
 ## Maintainer
 
-This project was written and is maintained by Kenny Katzgrau at [codefury.net](http://codefury.net). Twitter: [\_@kennyk\_](http://twitter.com/_kennyk_).
+This project was written and is maintained by Kenny Katzgrau at [codefury.net](http://codefury.net). Twitter: [@\_kennyk\_](http://twitter.com/_kennyk_).
 
 ## Naming
 

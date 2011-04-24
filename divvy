@@ -1,4 +1,4 @@
-#!/usr/bin/perl -w
+#!/usr/bin/env perl
 
 # divvy is a command line utility for splitting text lines (like those from log
 #  files) into separate files based on pattern matching. It works on multiple,
@@ -31,7 +31,7 @@
 use strict;
 no strict 'refs';
 
-use Data::Dumper;
+#use Data::Dumper;
 use Term::ANSIColor;
 # Add a handler to catch kill signals
 use sigtrap 'handler' => \&safe_exit, 'INT', 'ABRT', 'QUIT', 'TERM';
@@ -41,7 +41,7 @@ use sigtrap 'handler' => \&safe_exit, 'INT', 'ABRT', 'QUIT', 'TERM';
 my @handler_types = qw/log exec pexec screen email/;
 
 # Will hold options/switched
-my @option_types = qw/follow complete line-only/;
+my @option_types = qw/follow complete line-only match-filename/;
 
 # Will hold options available for specific matches
 my @match_option_types = qw/color/;
@@ -53,13 +53,16 @@ my %flag_aliases = (
   'X' => 'pexec',
   's' => 'screen',
   'm' => 'match',
+  'i' => 'imatch',
   'o' => 'line-only',
   'e' => 'email',
   'f' => 'follow',
+  'h' => 'match-filename',
   'c' => 'complete'
 );
+
 # Will hold the version of divvy. No, I don't feel a constant is needed.
-my $version = '0.1a';
+my $version = '0.5';
 
 # Will hold the patterns that we're looking for
 my %patterns = ();
@@ -90,7 +93,7 @@ my %match_options = ();
 my %index_to_handler = ();
 
 # Holds script start time
-my $start_time = localtime;
+my $start_time = localtime();
 
 # Is this a child process?
 my $is_child = 0;
@@ -122,9 +125,16 @@ sub validate_args() {
         $handler = $flag_aliases{$handler};
       }
       # Check to see what type of argument this is
-      if($handler eq "match") {
+      if($handler eq 'match') {
         # It's a 'match' argument specifying a pattern
         $patterns{$index} = $argument; 
+      } elsif ($handler eq 'imatch') {
+        # It's a match argument, but for case-insensitive matches
+        $patterns{$index} = $argument;
+        if(!defined($match_options{$index})) {
+          $match_options{$index} = {}; 
+        }
+        $match_options{$index}{'insensitive'} = 1;
       } elsif (defined($index) && defined($handlers{$handler})) {
         # It's a handler specifying what to do with a match
         $handlers{$handler}{$index} = $argument;    
@@ -215,7 +225,18 @@ sub main {
     foreach my $idx (sort keys %patterns) {
       # Attempt to match the line
       $_ = $line;
-      if(/$patterns{$idx}/) {
+      # Include the file/host in the match line
+      $_ = "$logfile $line" if(get_opt('match-filename'));
+      # Was the match insensitive?
+      my $matched = (get_match_opt($idx, 'insensitive') 
+                     ? /$patterns{$idx}/i
+                     : /$patterns{$idx}/);
+      # Finally, does it match?
+      if($matched) {
+        # Include the file name in the line for output if multiple files
+        if(@logfiles > 1 && !get_opt('line-only')) {
+          $line = "$nice_logfile: $line";
+        }
         execute_all_handlers($idx, $line);
       }
     }
@@ -289,25 +310,25 @@ sub get_input {
         # Remote file, and we want to tail it
         my $ssh = construct_remote($logfile, 1);
         # Open ssh!
-        $ssh_pid = open $input_handle, '-|', $ssh; 
+        $ssh_pid = open($input_handle, '-|', $ssh); 
       } else {
         # Local file that we need to tail
         # Pipe from tail! First, WTH is tail? /usr/bin? Don't be naive..
         my $tail = `which tail`;
         chomp($tail);
         # Start the tail 0 lines of initial output
-        open $input_handle, '-|', $tail, '-f', '-n', '0', $logfile;
+        open($input_handle, '-|', $tail, '-f', '-n', '0', $logfile);
       }
     } else {
       if(is_ssh($logfile)) {
         # Remote file, and we just want to 'grep' through it
         my $ssh = construct_remote($logfile, 0);
-        open $input_handle, '-|', $ssh;
+        open($input_handle, '-|', $ssh);
       } else {
         # Local file, 'grep' through it
         # Uh oh, the log file doesn't exist :'(
         fatal("Input file specified does not exist: $logfile") if (! -e $logfile);
-        open $input_handle, '<', $logfile;
+        open($input_handle, '<', $logfile);
       }
     }
   } else {
@@ -427,6 +448,7 @@ sub safe_exit {
   if($ssh_pid > 0) {
     kill 1, $ssh_pid;
   }
+  print "Exiting..\n" if(!$is_child);
   exit(1);
 }
 
@@ -482,7 +504,7 @@ sub send_email {
 # Print a help message. This will print instructions and exit.
 sub print_usage {
   print qq/divvy version $version
-Usage: divvy [options] [--match#] [--handler#] [filename]
+Usage: divvy [options] [--match#] [--handler#] [file1 [file2 ...]]
 Example: divvy --follow --match0=ERROR --email0='katzgrau\@gmail.com' log.txt
 
 Divvy will open a specified log file, or standard input if one is not
@@ -505,12 +527,16 @@ are found:
 
  \$ .\/process | divvy -m0=error -s0=red -e0=me\@d.com -m1='.*' -L1=log.txt
 
-But that's not all divvy does. It will send notifications when lines are
-matched, log lines, print the on the screen, or any combination, and more.
+divvy can be run on multiple files, and remote files. Remote files should
+be in the form: username\@example.com:\/path\/to\/file.txt
 
-Matching Lines (at least one required):
+Can send notifications when lines are matched, log lines, print the line
+on the screen, or any combination, and more.
+
+Matching Lines (at least one match argument required):
  -m\/--match#=<pattern>  Catch all lines matching <pattern>, a perl regular
                         expression, and execute any handlers with the same #
+ -i\/--imatch#=<pattern> The same as --match, but case-insensitive
 
 Handlers:
  -e\/--email#=<email>    Send line to email address specified
@@ -525,6 +551,8 @@ Global Options:
  -c\/--complete=<email> Notify when complete (for long tasks piped in)
  -o\/--line-only        Do not show the filename when divvy-ing multiple
                        files
+ -h\/--match-filename   Include the filename and host in the line being matched.
+                       Handy for matching lines in one file or host and not another
 Other:
     --friend=<email>   Tell a friend about divvy (oh c'mon)
 
@@ -586,7 +614,7 @@ sub handle_pexec {
   my ($index, $line) = @_;
   my $cmd = get_arg('pexec', $index);
   $cmd =~ s/\{\{LINE\}\}/$line/g;
-  open pipe_out, '|', $cmd;
+  open(pipe_out, '|', $cmd);
   print pipe_out $line . "\n";
   close(pipe_out);
 }
@@ -662,9 +690,6 @@ sub handle_screen {
   my ($index, $line) = @_;
   my $color = (get_match_opt($index, 'color')
     or get_arg('screen', $index));
-  if(@logfiles > 1 && !get_opt('line-only')) {
-    $line = "$nice_logfile: $line";
-  }
   if($color) {  
     print(colored [$color], "$line\n") if(!$did_print);
     print color 'reset';
@@ -682,7 +707,7 @@ sub handle_screen_post_search {
 
 # -----------------------------------------------------------------------------
 # Kickoff the main program loop
-main;
+main();
 
 #print Dumper(@ARGV);
 #print Dumper(\%patterns) . "\n" ;

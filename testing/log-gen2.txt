@@ -31,7 +31,7 @@ open handle, '>', 'log2.txt';
 
 for(;;) {
   select((select(handle), $|=1)[0]);
-  print "2 - " . $lines[rand @lines] . "\n";
-  print handle "2 - " . $lines[rand @lines] . "\n";
+  print $lines[rand @lines] . "\n";
+  print handle $lines[rand @lines] . "\n";
 	sleep 1;
 }
