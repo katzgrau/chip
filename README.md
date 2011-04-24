@@ -1,8 +1,8 @@
 # divvy
 
 `divvy` is a local and remote log parsing and monitoring tool for system admins and developers. 
-It wraps the functionality of `tee`, `tail`, `grep`, `ccze`, `mail`, and [splunk](http://www.splunk.com/) all in to one,
-with some extras.
+It wraps the features of `swatch`, `tee`, `tail`, `grep`, `ccze`, and `mail`
+into one, with some extras.
 
 ## One line install
 
