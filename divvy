@@ -33,6 +33,7 @@ no strict 'refs';
 
 #use Data::Dumper;
 use Term::ANSIColor;
+
 # Add a handler to catch kill signals
 use sigtrap 'handler' => \&safe_exit, 'INT', 'ABRT', 'QUIT', 'TERM';
 
@@ -118,7 +119,8 @@ sub validate_args() {
   # Go through each argument
   foreach (@ARGV) {
     # Does it look like a valid argument?
-    if(my ($handler, $index, $argument) = 
+    my $arg = $_;
+		if(my ($handler, $index, $argument) = 
       /\-\-?([a-zA-Z\-]+)(\d+)?=?(?:["']?)([^'"]*)(?:["']?)/) {
       # Is this a short-form of a flag? Translate it
       if(defined($flag_aliases{$handler})) {
@@ -158,10 +160,10 @@ sub validate_args() {
       } else {
         # If it's not a match, handler, or option, it must be a log file to 
         #  open
-        push(@logfiles, $handler);  
+        push(@logfiles, $arg);  
       }
     } else {
-      push(@logfiles, $_);
+      push(@logfiles, $arg);
     }
   }
   # Were any matches specified?
@@ -403,7 +405,8 @@ sub wait_lock {
     if(! -e "/tmp/$name") {
       last WAIT;
     } else {
-      sleep(1);
+			# Sleep for 1 tenth of a second
+      select(undef, undef, undef, 0.1);
     }
   }
 }
@@ -453,14 +456,12 @@ sub safe_exit {
 }
 
 # Is this filepath a remote via ssh?
-# TODO: Is there a better way to do this?
 sub is_ssh {
   ($_) = @_;
   return /.*:.*/;
 }
 
 # Try and parse the username, host, and path from an ssh address
-#  TODO: See above.
 #  Returns (username, host, filepath). username might come back empty
 sub parse_ssh {
   ($_) = @_;
@@ -490,13 +491,13 @@ sub construct_remote {
 }
 
 # Send an email!
-#  Todo: Do this in some very-portable way
+#  TODO: Do this in some very-portable way
 #  Takes to, subject, body
 my $mailbin = `which mail`;  
 sub send_email {
   my ($to, $subject, $body) = @_;
   chomp($mailbin);
-  open(pipe_out, '|-', $mailbin, '-s', "$subject", $to);
+  open(pipe_out, '|-', $mailbin, '-s', $subject, $to);
   print pipe_out "$body\n";
   close(pipe_out);
 }
