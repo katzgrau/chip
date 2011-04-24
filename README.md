@@ -17,9 +17,10 @@ Now read all about what you've just installed :)
 You have **n** production servers behind a load balancer. Each one has error logs being written, 
 and you need to view all those logs at once. Maybe you're doing a deployment, investigating a bug, or just monitoring.
 
-This probably requires that you ssh into all **n** boxes, and monitor the logs separately. What if you're only interested
-in lines with the word `ERROR` or some other pattern in it? What if you want to be notified by email when certain things
-show up in the logs? What if you want the output to look nice? `divvy` does all that and mo'.
+This probably requires that you ssh into all **n** boxes, and monitor the logs separately. How about about viewing all the logs
+from one terminal? What if you're only interested in lines with the word `ERROR` or some other pattern in it? 
+What if you want to be notified by email when certain things show up in the logs? 
+What if you want the output to look nice? `divvy` does all that and mo'.
 
 ## The basics
 
