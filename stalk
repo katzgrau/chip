@@ -508,7 +508,7 @@ sub print_usage {
 Usage: stalk [options] [--match#] [--handler#] [file1 [file2 ...]]
 Example: stalk --follow --match0=ERROR --email0='katzgrau\@gmail.com' log.txt
 
-Divvy will open a specified log file, or standard input if one is not
+stalk will open a specified log file, or standard input if one is not
 provided. It will look for 'matches' that you specify with a match flag,
 and a number that you make up, like: --match0='ERROR'
 
