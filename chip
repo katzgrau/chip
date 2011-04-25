@@ -1,6 +1,6 @@
 #!/usr/bin/env perl
 
-# stalk is a command line utility for splitting text lines (like those from log
+# chip is a command line utility for splitting text lines (like those from log
 #  files) into separate files based on pattern matching. It works on multiple,
 #  remote files too. 
 #
@@ -12,7 +12,7 @@
 #   http://codefury.net
 #   http://twitter.com/_kennyk_
 # Project maintained at:
-#   http://github.com/katzgrau/stalk
+#   http://github.com/katzgrau/chip
 
 # This script was written to be easily modifiable in case others would want to 
 #  add their own functionality
@@ -62,7 +62,7 @@ my %flag_aliases = (
   'c' => 'complete'
 );
 
-# Will hold the version of stalk. No, I don't feel a constant is needed.
+# Will hold the version of chip. No, I don't feel a constant is needed.
 my $version = '0.5a';
 
 # Will hold the patterns that we're looking for
@@ -167,9 +167,9 @@ sub validate_args() {
     }
   }
   # Were any matches specified?
-  fatal("No patterns were specified! Try stalk --help") if(0 == (keys %patterns));  
+  fatal("No patterns were specified! Try chip --help") if(0 == (keys %patterns));  
   # Were any handlers specified?
-  fatal("No handlers were specified! Try stalk --help") if(0 == (keys %index_to_handler));
+  fatal("No handlers were specified! Try chip --help") if(0 == (keys %index_to_handler));
 }
 
 # This is the main program loop. Roll through standard input and try matching
@@ -210,7 +210,7 @@ sub main {
       }
     }
     unlock('ready');
-    wait_lock('stalk');
+    wait_lock('chip');
   }
   # Execute any pre-processing hooks
   execute_all_hooks('open');
@@ -257,8 +257,8 @@ sub main {
     my $localtime = localtime;
     my $hostname  = `hostname`;
     my $cmd = join(' ', @ARGV);
-    my $body = "stalk's done.\n\nCommand: $0 $cmd\nStarted: $start_time\nComplete: $localtime\nHost: $hostname";
-    send_email($email, "stalk completed @ $localtime", $body);
+    my $body = "chip's done.\n\nCommand: $0 $cmd\nStarted: $start_time\nComplete: $localtime\nHost: $hostname";
+    send_email($email, "chip completed @ $localtime", $body);
   }
 }
 
@@ -270,7 +270,7 @@ sub spawn_workers {
     my $parent = 1;
     # Set a lock that will act as a flag to children so
     #  they know when to begin processing
-    set_lock('stalk');
+    set_lock('chip');
     # Fork off workers
     FORKS: foreach my $file (@logfiles) {
       $logfile = $file;
@@ -288,7 +288,7 @@ sub spawn_workers {
     }
     if($parent) {
       # Remove the lock. Now children to kick off
-      unlock('stalk');
+      unlock('chip');
       # Wait for workers to exit
       foreach my $pid (keys %workers) {
         waitpid($pid, 0);
@@ -387,7 +387,7 @@ sub format_filename {
 # Set a lock on a given name
 sub set_lock {
   my ($name) = @_;
-  $name = 'stalk-'.rand(10000) if(!defined($name));
+  $name = 'chip-'.rand(10000) if(!defined($name));
   `touch /tmp/$name`;
   return $name;
 }
@@ -504,11 +504,11 @@ sub send_email {
 
 # Print a help message. This will print instructions and exit.
 sub print_usage {
-  print qq/stalk version $version
-Usage: stalk [options] [--match#] [--handler#] [file1 [file2 ...]]
-Example: stalk --follow --match0=ERROR --email0='katzgrau\@gmail.com' log.txt
+  print qq/chip version $version
+Usage: chip [options] [--match#] [--handler#] [file1 [file2 ...]]
+Example: chip --follow --match0=ERROR --email0='katzgrau\@gmail.com' log.txt
 
-stalk will open a specified log file, or standard input if one is not
+chip will open a specified log file, or standard input if one is not
 provided. It will look for 'matches' that you specify with a match flag,
 and a number that you make up, like: --match0='ERROR'
 
@@ -518,17 +518,17 @@ and the same number. Like: --log0=errors.txt
 So if you wanted to open server-log.txt, and stick all errors in errors.txt,
 you would:
 
- stalk --match0=ERROR --log0=errors.txt server-log.txt
+ chip --match0=ERROR --log0=errors.txt server-log.txt
        --or in shorthand--
- stalk -m0=ERROR -L0=errors.txt server-log.txt
+ chip -m0=ERROR -L0=errors.txt server-log.txt
 
 You can do many things at once, like logging everything matching 'error' 
 to the screen, logging all lines to a file, and get an email when matches 
 are found:
 
- \$ .\/process | stalk -m0=error -s0=red -e0=me\@d.com -m1='.*' -L1=log.txt
+ \$ .\/process | chip -m0=error -s0=red -e0=me\@d.com -m1='.*' -L1=log.txt
 
-stalk can be run on multiple files, and remote files. Remote files should
+chip can be run on multiple files, and remote files. Remote files should
 be in the form: username\@example.com:\/path\/to\/file.txt
 
 Can send notifications when lines are matched, log lines, print the line
@@ -550,19 +550,19 @@ Handlers:
 Global Options:
  -f\/--follow            Valid when an input file is specified. Track changes.
  -c\/--complete=<email>  Notify when complete (for long tasks piped in)
- -o\/--line-only         Do not show the filename when stalk-ing multiple
+ -o\/--line-only         Do not show the filename when chip-ing multiple
                         files
  -h\/--match-filename    Include the filename and host in the line being matched.
                         Handy for matching lines in one file or host and not another
 Other:
-    --friend=<email>    Tell a friend about stalk (oh c'mon)
+    --friend=<email>    Tell a friend about chip (oh c'mon)
 
 Written by Kenny Katzgrau <katzgrau\@gmail.com>
 /;
   exit;
 }
 
-# Tell a friend about stalk. First social terminal script :)
+# Tell a friend about chip. First social terminal script :)
 sub tell_friend {
   my ($email) = @_;
   print "Sweet! Thanks for spreading the word! What's your name? ";
@@ -575,18 +575,18 @@ sub tell_friend {
   my $body = <<b;
 Hey there,
   
-Check out this new log parsing and monitoring script named stalk!
+Check out this new log parsing and monitoring script named chip!
 
-* http://github.com/katzgrau/stalk - It's pretty cool.
+* http://github.com/katzgrau/chip - It's pretty cool.
 
 This was sent to you by $name, probably because they think you
 might find it useful :)
 
-- stalk
+- chip
 b
 
   # Send the email, and peace
-  send_email($email, "Check out stalk!", $body);
+  send_email($email, "Check out chip!", $body);
   print "Email sent (I think). Thanks again $name!\n";
   exit;
 }
@@ -631,7 +631,7 @@ sub handle_email {
   if(get_opt('follow')) {
     # Are we following the file with tail? Send an email as matches come up ..
     my $now = localtime;
-    send_email($email, "stalk matched '$pattern' @ $now", $line);
+    send_email($email, "chip matched '$pattern' @ $now", $line);
   } else {
     # Are we flying through the file all at once like grep. Save all the 
     #  matches for one big email
@@ -654,7 +654,7 @@ sub handle_email_close() {
     # Send each specified recipient the buffer that was
     while(my ($email, $patterns) = each %buffers) {
       while(my ($pattern, $buffer) = each %{$patterns}) {
-        send_email($email, "stalk matched '$pattern' @ $start_time", $buffer);
+        send_email($email, "chip matched '$pattern' @ $start_time", $buffer);
       }
     }
   }

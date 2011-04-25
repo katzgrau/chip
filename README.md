@@ -1,6 +1,6 @@
-# stalk
+# chip
 
-`stalk` is a local and remote log parsing and monitoring tool for system admins and developers. 
+`chip` is a local and remote log parsing and monitoring tool for system admins and developers. 
 It wraps the features of `swatch`, `tee`, `tail`, `grep`, `ccze`, and `mail`
 into one, with some extras. Watch the [screencast](http://www.screenr.com/7Hi)!
 
@@ -8,11 +8,11 @@ into one, with some extras. Watch the [screencast](http://www.screenr.com/7Hi)!
 
 Want to jump right in? This will work on most *nix systems. You _may_ have to execute it with `sudo`.
 
-`perl -e "$(curl -fsSL https://gist.github.com/raw/895149/install-stalk)"`
+`perl -e "$(curl -fsSL https://gist.github.com/raw/895149/install-chip)"`
 
 Now read all about what you've just installed :)
 
-## What stalk can do for you, really quickly
+## What chip can do for you, really quickly
 
 You have **n** production servers behind a load balancer. Each one has error logs being written, 
 and you need to view all those logs at once. Maybe you're doing a deployment, investigating a bug, or just monitoring.
@@ -20,12 +20,12 @@ and you need to view all those logs at once. Maybe you're doing a deployment, in
 This probably requires that you ssh into all **n** boxes, and monitor the logs separately. How about about viewing all the logs
 from one terminal? What if you're only interested in lines with the word `ERROR` or some other pattern in it? 
 What if you want to be notified by email when certain things show up in the logs? 
-What if you want the output to look nice? `stalk` does all that and mo'.
+What if you want the output to look nice? `chip` does all that and mo'.
 
 ## The basics
 
-`stalk` starts up and tries to open log file(s), either local or remote. If one isn't specified, it reads from standard input.
-It goes through each line looking for patterns that _you_ have specified as arguments. When it finds a match, stalk does 
+`chip` starts up and tries to open log file(s), either local or remote. If one isn't specified, it reads from standard input.
+It goes through each line looking for patterns that _you_ have specified as arguments. When it finds a match, chip does 
 whatever you told it to do with that match.
 
 Maybe you'd want to:
@@ -45,7 +45,7 @@ Maybe you'd want to:
 You have a long-running process that prints out its progress. Some items
 might be errors (maybe prefixed with 'ERROR'), others are warnings.
 
-`$ ./lame-process | stalk --match0=ERROR --log0=errors.txt --match1=WARN --log1=warnings.txt`
+`$ ./lame-process | chip --match0=ERROR --log0=errors.txt --match1=WARN --log1=warnings.txt`
 
 ### View some matches in your terminal, stick others in a file
 
@@ -56,7 +56,7 @@ bunch of status lines get output, along with occasional errors.
 You want to run the script, see only the errors on the screen, and at the same time, 
 send all output to one file and all errors to another.
 
-`$ ./email-import | stalk --match0='.*' --log0=output.txt --match1='ERROR' --log1=errors.txt --screen1`
+`$ ./email-import | chip --match0='.*' --log0=output.txt --match1='ERROR' --log1=errors.txt --screen1`
 
 ### Highlight matches in a terminal, and have errors emailed to you, and logged
 
@@ -64,28 +64,28 @@ Want to get notified whenever a fatal (like an HTTP 500) error occurs and is log
 Want to log them separately too? Want to view all output as it goes by (like `tail`), but highlight 
 fatal errors in red? No prob. This time, in shorthand:
 
-`$ stalk -f -m0='HTTP 500' -s0='red' -e0=katzgrau@gmail.com -L0=fatal.txt -m1='.*' -s1 error_log.txt` 
+`$ chip -f -m0='HTTP 500' -s0='red' -e0=katzgrau@gmail.com -L0=fatal.txt -m1='.*' -s1 error_log.txt` 
 
 ### The kicker: Do all of the above on multiple, remote files
 
-stalk can tail multiple files too. It will also tail files over ssh! Ever want to monitor multiple logs and separate
+chip can tail multiple files too. It will also tail files over ssh! Ever want to monitor multiple logs and separate
 boxes behind a load balancer? Let's do the last example again but with two remote files:
 
-`$ stalk -f -m0='HTTP 500' -s0='red' -e0=katzgrau@gmail.com -L0=fatal.txt -m1='.*' -s1 username@www1.example.com:/var/log/errors.log username@www2.example.com:/var/log/errors.log` 
+`$ chip -f -m0='HTTP 500' -s0='red' -e0=katzgrau@gmail.com -L0=fatal.txt -m1='.*' -s1 username@www1.example.com:/var/log/errors.log username@www2.example.com:/var/log/errors.log` 
 
 ## More Fun Stuff
 
 How about kicking off some process every time something specific shows up in the log?
 
-`$ stalk --follow --match0='out of space' --exec0='rm -rf tmp/*' maillog`
+`$ chip --follow --match0='out of space' --exec0='rm -rf tmp/*' maillog`
 
 How about being notified of when a script ends too?
 
-`$ ./alter-table | stalk --complete=katzgrau@gmail.com --match0=ERROR --log0=errors.txt`
+`$ ./alter-table | chip --complete=katzgrau@gmail.com --match0=ERROR --log0=errors.txt`
 
 How about color-coding your output?
 
-`$ stalk --follow --match0=ERROR --screen0='bold red on_black' --match1=WARN --screen1=yellow --match2=INFO --screen2=blue ap_log.txt` 
+`$ chip --follow --match0=ERROR --screen0='bold red on_black' --match1=WARN --screen1=yellow --match2=INFO --screen2=blue ap_log.txt` 
 
 ## Feature List
 
@@ -105,7 +105,7 @@ How about color-coding your output?
 
 To view the usage:
 
-`$ stalk --help`
+`$ chip --help`
 
 ## Maintainer
 
@@ -113,11 +113,19 @@ This project was written and is maintained by Kenny Katzgrau at [codefury.net](h
 
 ## Naming
 
-`stalk` used to be named `divvy`. I found out there was a window manager named 'Divvy' 
-and this fact ate at my sanity for weeks. I finally gave in. `stalk` is harder to
-pronounce and much creepier, but I appreciate the double-meaning. Plus, since
-stalk now monitors multiple, remote files, the new name reflects the expanded
+`chip` used to be named `stalk`. Before that, it was named `divvy`. I found out 
+there was a window manager named 'Divvy'. This fact ate at my sanity for weeks, and I finally gave in. 
+
+`stalk` was harder to pronounce and much creepier, but I appreciated the double-meaning. 
+Since `stalk` monitored multiple remote files, the new name reflected the expanded
 scope of the project.
+
+... One hour later, I realized I would now be receiving emails from `stalk`. This bothered
+me to the point that I knew another name change was iminent. `stalk` was just too creepy.
+
+The utility is now named `chip`. Chip is everybody's innocent pal, right? He's no 
+`stalk`er, that's for sure. `chip` has a similar play on words (log chipper).
+Couldn't you trust `chip` to keep an eye on things while you're away?
 
 ## About
 
