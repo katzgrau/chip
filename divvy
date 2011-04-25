@@ -120,7 +120,7 @@ sub validate_args() {
   foreach (@ARGV) {
     # Does it look like a valid argument?
     my $arg = $_;
-		if(my ($handler, $index, $argument) = 
+    if(my ($handler, $index, $argument) = 
       /\-\-?([a-zA-Z\-]+)(\d+)?=?(?:["']?)([^'"]*)(?:["']?)/) {
       # Is this a short-form of a flag? Translate it
       if(defined($flag_aliases{$handler})) {
@@ -405,7 +405,7 @@ sub wait_lock {
     if(! -e "/tmp/$name") {
       last WAIT;
     } else {
-			# Sleep for 1 tenth of a second
+      # Sleep for 1 tenth of a second
       select(undef, undef, undef, 0.1);
     }
   }
@@ -548,14 +548,14 @@ Handlers:
                         the line in
 
 Global Options:
- -f\/--follow           Valid when an input file is specified. Track changes.
- -c\/--complete=<email> Notify when complete (for long tasks piped in)
- -o\/--line-only        Do not show the filename when divvy-ing multiple
-                       files
- -h\/--match-filename   Include the filename and host in the line being matched.
-                       Handy for matching lines in one file or host and not another
+ -f\/--follow            Valid when an input file is specified. Track changes.
+ -c\/--complete=<email>  Notify when complete (for long tasks piped in)
+ -o\/--line-only         Do not show the filename when divvy-ing multiple
+                        files
+ -h\/--match-filename    Include the filename and host in the line being matched.
+                        Handy for matching lines in one file or host and not another
 Other:
-    --friend=<email>   Tell a friend about divvy (oh c'mon)
+    --friend=<email>    Tell a friend about divvy (oh c'mon)
 
 Written by Kenny Katzgrau <katzgrau\@gmail.com>
 /;
