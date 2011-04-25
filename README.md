@@ -8,7 +8,7 @@ into one, with some extras. Watch the [screencast](http://www.screenr.com/7Hi)!
 
 Want to jump right in? This will work on most *nix systems. You _may_ have to execute it with `sudo`.
 
-`perl -e "$(curl -fsSL https://gist.github.com/raw/895149/install-chip)"`
+`perl -e "$(curl -fsSL https://gist.github.com/raw/940608/install-chip)"`
 
 Now read all about what you've just installed :)
 
