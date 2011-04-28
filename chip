@@ -42,7 +42,7 @@ use sigtrap 'handler' => \&safe_exit, 'INT', 'ABRT', 'QUIT', 'TERM';
 my @handler_types = qw/log exec pexec screen email/;
 
 # Will hold options/switched
-my @option_types = qw/follow complete line-only match-filename/;
+my @option_types = qw/follow complete line-only match-filename debug/;
 
 # Will hold options available for specific matches
 my @match_option_types = qw/color/;
@@ -59,7 +59,8 @@ my %flag_aliases = (
   'e' => 'email',
   'f' => 'follow',
   'h' => 'match-filename',
-  'c' => 'complete'
+  'c' => 'complete',
+  'd' => 'debug'
 );
 
 # Will hold the version of chip. No, I don't feel a constant is needed.
@@ -188,6 +189,11 @@ sub main {
  
   # Second, validate the args!
   validate_args();
+
+  # Is this a debug run?
+  if(get_opt('debug')) {
+    print_debug();
+  }
 
   # Spawn off workers
   spawn_workers();
@@ -419,7 +425,7 @@ sub get_arg {
   if($handlers{$type}{$index}) {
     return $handlers{$type}{$index};
   } else {
-    return 0;
+    return undef;
   }
 }
 
@@ -452,6 +458,45 @@ sub safe_exit {
     kill 1, $ssh_pid;
   }
   print "Exiting..\n" if(!$is_child);
+  exit(1);
+}
+
+# Print the status of chip
+sub print_debug {
+  # Print files to be opened
+  print "\nchip is planning to open ...\n";
+  print "-------------------------------------------------\n";
+  if(@logfiles > 0) {
+    foreach my $file (@logfiles) {
+      if(!is_ssh($file)) { 
+        print "  File: $file\n";
+      } else {
+        my ($user, $host, $file) = parse_ssh($file);
+        $user = '[none]' if (!$user); 
+        print "  SSH : $user @ $host => $file\n";
+      }
+    }
+  } else {
+    print   "Standard Input (STDIN)\n";
+  }
+  print "\nwith these patterns and associated handlers\n";
+  print "-------------------------------------------------\n";
+  # Print patterns and all handlers
+  foreach my $idx (sort keys %patterns) {
+    my $i = (get_match_opt($idx, 'insensitive') ? 'i' : ''); 
+    print "  Pattern #$idx => /$patterns{$idx}/$i\n";
+    foreach my $hlr (@{$index_to_handler{$idx}}) {
+      my $arg = get_arg($hlr, $idx) || '[none]';
+      print "  - $hlr => ".$arg."\n";
+    }
+  }
+  print "\nwith these options\n";
+  print "-------------------------------------------------\n";
+  # Print all global options
+  foreach my $opt (keys %options) {
+    print "  $opt => $options{$opt}\n" if($options{$opt});
+  }
+  print "\n";
   exit(1);
 }
 
@@ -548,12 +593,14 @@ Handlers:
                         the line in
 
 Global Options:
- -f\/--follow            Valid when an input file is specified. Track changes.
  -c\/--complete=<email>  Notify when complete (for long tasks piped in)
- -o\/--line-only         Do not show the filename when chip-ing multiple
-                        files
+ -d\/--debug             Do not run chip, but print exactly what will happen
+                        If the given options are specified
+ -f\/--follow            Valid when an input file is specified. Track changes.
  -h\/--match-filename    Include the filename and host in the line being matched.
                         Handy for matching lines in one file or host and not another
+ -o\/--line-only         Do not show the filename when chip-ing multiple
+                        files
 Other:
     --friend=<email>    Tell a friend about chip (oh c'mon)
 
