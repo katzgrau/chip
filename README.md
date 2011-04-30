@@ -14,13 +14,9 @@ Now read all about what you've just installed :)
 
 ## What chip can do for you, really quickly
 
-You have **n** production servers behind a load balancer. Each one has error logs being written, 
-and you need to view all those logs at once. Maybe you're doing a deployment, investigating a bug, or just monitoring.
-
-This probably requires that you ssh into all **n** boxes, and monitor the logs separately. How about about viewing all the logs
-from one terminal? What if you're only interested in lines with the word `ERROR` or some other pattern in it? 
-What if you want to be notified by email when certain things show up in the logs? 
-What if you want the output to look nice? `chip` does all that and mo'.
+* Tail multiple logs at once, even remote logs
+* Search multiple logs (even remote ones) for patterns. Like grep across n hosts/files
+* Monitor multiple logs for occurrences of some match. Ie, log a certain line, send an email, start a process, more.
 
 ## The basics
 
@@ -72,6 +68,45 @@ chip can tail multiple files too. It will also tail files over ssh! Ever want to
 boxes behind a load balancer? Let's do the last example again but with two remote files:
 
 `$ chip -f -m0='HTTP 500' -s0='red' -e0=katzgrau@gmail.com -L0=fatal.txt -m1='.*' -s1 username@www1.example.com:/var/log/errors.log username@www2.example.com:/var/log/errors.log` 
+
+## Power users
+
+Here are some tips for making chip super-useful:
+
+### When dealing with remote servers, set up ssh keys (authorized_keys)
+
+Your chip commands will run quickly without prompting you for your password every time you run a chip command
+
+### alias chip for an easy remote grep
+
+In .bashrc, put something like:
+
+`alias grepprod='chip -s0 username@www1.example.com:/var/log/errors.log username@www2.example.com:/var/log/errors.log'` 
+
+Then from the prompt, all you need to grep through *all* of your prod logs is:
+
+`grepprod -m0=[pattern]`
+
+### Command not working? Try -d
+
+Type out an entire `chip` command, and tack on -d. Chip will tell you exactly what it was about to do.
+
+`./chip -f -i0='(error|fatal)' -s0=red -e0=katzgrau@gmail.com,moo@moo.com -c=katzgrau@gmail.com log.txt example.com:/tmp/log.txt -d`
+
+    chip is planning to open ...
+    -------------------------------------------------
+      File: log.txt
+      SSH : [none] @ example.com => /tmp/log.txt
+    with these patterns and associated handlers
+    -------------------------------------------------
+      Pattern #0 => /(error|fatal)/i
+      - screen => red
+      - email => katzgrau@gmail.com,moo@moo.com
+    with these options
+    -------------------------------------------------
+      follow => 1
+      debug => 1
+      complete => katzgrau@gmail.com
 
 ## More Fun Stuff
 
