@@ -164,7 +164,9 @@ Couldn't you trust `chip` to keep an eye on things while you're away?
 
 ## About
 
-Written in Perl. Inspired by my work at Yahoo!.
+Written in Perl. Inspired by my work at Yahoo!. First presented at [Hack and Tell](http://hackandtell.org/) in NYC. 
+
+Special thanks to Andrew Gwozdziewycz (co-organizer of H & T) for the contribution of cowsay.
 
 ## License
 
