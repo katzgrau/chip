@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset='utf-8'>
+    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+
+    <link rel="stylesheet" type="text/css" href="stylesheets/stylesheet.css" media="screen" />
+    <link rel="stylesheet" type="text/css" href="stylesheets/pygment_trac.css" media="screen" />
+    <link rel="stylesheet" type="text/css" href="stylesheets/print.css" media="print" />
+
+    <title>Chip by katzgrau</title>
+  </head>
+
+  <body>
+
+    <header>
+      <div class="container">
+        <h1>Chip</h1>
+        <h2>A log file multiplexer and monitor. Tail multiple remote or local log files, set actions, and more. A friend to every developer and system admin. Alpha.</h2>
+
+        <section id="downloads">
+          <a href="https://github.com/katzgrau/chip/zipball/master" class="btn">Download as .zip</a>
+          <a href="https://github.com/katzgrau/chip/tarball/master" class="btn">Download as .tar.gz</a>
+          <a href="https://github.com/katzgrau/chip" class="btn btn-github"><span class="icon"></span>View on GitHub</a>
+        </section>
+      </div>
+    </header>
+
+    <div class="container">
+      <section id="main_content">
+        <h1>chip</h1>
+
+<p><code>chip</code> is a local and remote log parsing and monitoring tool for system admins and developers. 
+It wraps the features of <code>swatch</code>, <code>tee</code>, <code>tail</code>, <code>grep</code>, <code>ccze</code>, and <code>mail</code>
+into one, with some extras. Still an 'alpha'. Watch the <a href="http://codefury.net/2011/04/video-chip-a-log-file-monitor-multiplexer/">screencast</a>!</p>
+
+<h2>One line install</h2>
+
+<p>Want to jump right in? This will work on most *nix systems. You <em>may</em> have to execute it with <code>sudo</code>.</p>
+
+<p><code>perl -e "$(curl -fsSL <a href="https://raw.github.com/gist/940608/install-chip)">https://raw.github.com/gist/940608/install-chip)</a>"</code></p>
+
+<p>Now read all about what you've just installed :)</p>
+
+<h2>What chip can do for you, really quickly</h2>
+
+<ul>
+<li>Tail multiple logs at once, even remote logs</li>
+<li>Search multiple logs (even remote ones) for patterns. Like grep across n hosts/files</li>
+<li>Monitor multiple logs for occurrences of some match. Ie, log a certain line, send an email, start a process, more.</li>
+</ul><h2>The basics</h2>
+
+<p><code>chip</code> starts up and tries to open log file(s), either local or remote. If one isn't specified, it reads from standard input.
+It goes through each line looking for patterns that <em>you</em> have specified as arguments. When it finds a match, chip does 
+whatever you told it to do with that match.</p>
+
+<p>Maybe you'd want to:</p>
+
+<ol>
+<li>Show the match(es) on the screen (like grep)</li>
+<li>Colorize matches (like a colorizer)</li>
+<li>Follow the file (like tail)</li>
+<li>Log it to a file (like output redirection)</li>
+<li>Have the line emailed to you (maybe for <em>really</em> important stuff)</li>
+<li>Kick off another program</li>
+<li>Any combination of the above, with any number of matches, all at once</li>
+</ol><h2>Examples</h2>
+
+<h3>Split matches into different files</h3>
+
+<p>You have a long-running process that prints out its progress. Some items
+might be errors (maybe prefixed with 'ERROR'), others are warnings.</p>
+
+<p><code>$ ./lame-process | chip --match0=ERROR --log0=errors.txt --match1=WARN --log1=warnings.txt</code></p>
+
+<h3>View some matches in your terminal, stick others in a file</h3>
+
+<p>You're about to run a script that does something nasty, like importing 1,000s
+of email addresses into an email service that rhymes with 'mailpimp'. A whole
+bunch of status lines get output, along with occasional errors.</p>
+
+<p>You want to run the script, see only the errors on the screen, and at the same time, 
+send all output to one file and all errors to another.</p>
+
+<p><code>$ ./email-import | chip --match0='.*' --log0=output.txt --match1='ERROR' --log1=errors.txt --screen1</code></p>
+
+<h3>Highlight matches in a terminal, and have errors emailed to you, and logged</h3>
+
+<p>Want to get notified whenever a fatal (like an HTTP 500) error occurs and is logged to some file? 
+Want to log them separately too? Want to view all output as it goes by (like <code>tail</code>), but highlight 
+fatal errors in red? No prob. This time, in shorthand:</p>
+
+<p><code>$ chip -f -m0='HTTP 500' -s0='red' -e0=katzgrau@gmail.com -L0=fatal.txt -m1='.*' -s1 error_log.txt</code> </p>
+
+<h3>The kicker: Do all of the above on multiple, remote files</h3>
+
+<p>chip can tail multiple files too. It will also tail files over ssh! Ever want to monitor multiple logs and separate
+boxes behind a load balancer? Let's do the last example again but with two remote files:</p>
+
+<p><code>$ chip -f -m0='HTTP 500' -s0='red' -e0=katzgrau@gmail.com -L0=fatal.txt -m1='.*' -s1 username@www1.example.com:/var/log/errors.log username@www2.example.com:/var/log/errors.log</code> </p>
+
+<h2>Power users</h2>
+
+<p>Here are some tips for making chip super-useful:</p>
+
+<h3>When dealing with remote servers, set up ssh keys (authorized_keys)</h3>
+
+<p>Your chip commands will run quickly without prompting you for your password every time you run a chip command</p>
+
+<h3>alias chip for an easy remote grep</h3>
+
+<p>In .bashrc, put something like:</p>
+
+<p><code>alias grepprod='chip -s0 username@www1.example.com:/var/log/errors.log username@www2.example.com:/var/log/errors.log'</code> </p>
+
+<p>Then from the prompt, all you need to grep through <em>all</em> of your prod logs is:</p>
+
+<p><code>grepprod -m0=[pattern]</code></p>
+
+<h3>Command not working? Try -d</h3>
+
+<p>Type out an entire <code>chip</code> command, and tack on -d. Chip will tell you exactly what it was about to do.</p>
+
+<p><code>./chip -f -i0='(error|fatal)' -s0=red -e0=katzgrau@gmail.com,moo@moo.com -c=katzgrau@gmail.com log.txt example.com:/tmp/log.txt -d</code></p>
+
+<pre><code>chip is planning to open ...
+-------------------------------------------------
+  File: log.txt
+  SSH : [none] @ example.com =&gt; /tmp/log.txt
+with these patterns and associated handlers
+-------------------------------------------------
+  Pattern #0 =&gt; /(error|fatal)/i
+  - screen =&gt; red
+  - email =&gt; katzgrau@gmail.com,moo@moo.com
+with these options
+-------------------------------------------------
+  follow =&gt; 1
+  debug =&gt; 1
+  complete =&gt; katzgrau@gmail.com
+</code></pre>
+
+<h2>More Fun Stuff</h2>
+
+<p>How about kicking off some process every time something specific shows up in the log?</p>
+
+<p><code>$ chip --follow --match0='out of space' --exec0='rm -rf tmp/*' maillog</code></p>
+
+<p>How about being notified of when a script ends too?</p>
+
+<p><code>$ ./alter-table | chip --complete=katzgrau@gmail.com --match0=ERROR --log0=errors.txt</code></p>
+
+<p>How about color-coding your output?</p>
+
+<p><code>$ chip --follow --match0=ERROR --screen0='bold red on_black' --match1=WARN --screen1=yellow --match2=INFO --screen2=blue ap_log.txt</code> </p>
+
+<h2>Feature List</h2>
+
+<ul>
+<li>Input by STDIN or file</li>
+<li>Open local or remote files (piggybacks on <code>ssh</code>)</li>
+<li>
+<code>tail</code>-ing of input files</li>
+<li>Pattern-based matching of lines</li>
+<li>Email notification on matches all-at-once or per-line</li>
+<li>Color-coded screen output for matches</li>
+<li>Logging of matches in separate files</li>
+<li>Arbitrary command execution for matches</li>
+<li>Adding as many command per match as needed</li>
+<li>Email notification on script completion</li>
+<li>Very portable, fast (perl)</li>
+</ul><h2>Usage</h2>
+
+<p>To view the usage:</p>
+
+<p><code>$ chip --help</code></p>
+
+<h2>Maintainer</h2>
+
+<p>This project was written and is maintained by Kenny Katzgrau at <a href="http://codefury.net">codefury.net</a>. Twitter: <a href="http://twitter.com/_kennyk_">@_kennyk_</a>.</p>
+
+<h2>Naming</h2>
+
+<p><code>chip</code> used to be named <code>stalk</code>. Before that, it was named <code>divvy</code>. I found out 
+there was a window manager named 'Divvy'. This fact ate at my sanity for weeks, and I finally gave in. </p>
+
+<p><code>stalk</code> was harder to pronounce and much creepier, but I appreciated the double-meaning. 
+Since <code>stalk</code> monitored multiple remote files, the new name reflected the expanded
+scope of the project.</p>
+
+<p>... One hour later, I realized I would now be receiving emails from <code>stalk</code>. This bothered
+me to the point that I knew another name change was iminent. <code>stalk</code> was just too creepy.</p>
+
+<p>The utility is now named <code>chip</code>. Chip is everybody's innocent pal, right? He's no 
+<code>stalk</code>er, that's for sure. <code>chip</code> has a similar play on words (log chipper).
+Couldn't you trust <code>chip</code> to keep an eye on things while you're away?</p>
+
+<h2>About</h2>
+
+<p>Written in Perl. Inspired by my work at Yahoo!. First presented at <a href="http://hackandtell.org/">Hack and Tell</a> in NYC. </p>
+
+<p>Special thanks to Andrew Gwozdziewycz (co-organizer of H &amp; T) for the contribution of cowsay.</p>
+
+<h2>License</h2>
+
+<p>Copyright (c) 2011 Kenny Katzgrau</p>
+
+<p>Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:</p>
+
+<p>The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.</p>
+
+<p>THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.</p>
+      </section>
+    </div>
+
+    
+  </body>
+</html>
